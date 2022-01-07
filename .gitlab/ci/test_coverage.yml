@@ -36,6 +36,9 @@ unified_coverage:
       # matching the coverage regexp below.
       make coverage-report-summary | sed 's@Coverage: [[:digit:]]\+/[[:digit:]]\+ (\(.*%\))@Coverage: \1@';
       make coverage-report-cobertura
+
+      mv $BISECT_FILE _coverage_report/traces/
+      bisect-ppx-report merge --coverage-path _coverage_report/traces/ _coverage_report/merged.coverage
     fi
   coverage: '/Coverage: ([^%]+%)/'
   artifacts:
