@@ -966,7 +966,7 @@ val spawn_send_sc_rollup_message :
 (** {2 High-Level Functions} *)
 
 (** Create a client with mode [Client] and import all secret keys
-    listed in {!Constant.all_secret_keys}. *)
+    listed in [?keys] (by default, [Constant.activator; Constant.bootstrap1]). *)
 val init :
   ?path:string ->
   ?admin_path:string ->
@@ -975,6 +975,7 @@ val init :
   ?base_dir:string ->
   ?endpoint:endpoint ->
   ?media_type:media_type ->
+  ?keys:Account.key list ->
   unit ->
   t Lwt.t
 
@@ -1025,6 +1026,7 @@ val init_with_protocol :
   ?default_accounts_balance:int ->
   ?parameter_file:string ->
   ?timestamp_delay:float ->
+  ?keys:Account.key list ->
   [`Client | `Light | `Proxy] ->
   protocol:Protocol.t ->
   unit ->
@@ -1065,6 +1067,7 @@ val init_light :
   ?event_level:Daemon.Level.default_level ->
   ?event_sections_levels:(string * Daemon.Level.level) list ->
   ?nodes_args:Node.argument list ->
+  ?keys:Account.key list ->
   unit ->
   (t * Node.t * Node.t) Lwt.t
 

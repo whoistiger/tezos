@@ -1297,13 +1297,14 @@ let send_sc_rollup_message ?wait ?burn_cap ~msg ~src ~dst client =
   in
   Process.check process
 
-let init ?path ?admin_path ?name ?color ?base_dir ?endpoint ?media_type () =
+let default_keys = [Constant.activator; Constant.bootstrap1]
+
+let init ?path ?admin_path ?name ?color ?base_dir ?endpoint ?media_type
+    ?(keys = default_keys) () =
   let client =
     create ?path ?admin_path ?name ?color ?base_dir ?endpoint ?media_type ()
   in
-  let* () =
-    Lwt_list.iter_s (import_secret_key client) Constant.all_secret_keys
-  in
+  let* () = Lwt_list.iter_s (import_secret_key client) keys in
   return client
 
 let init_mockup ?path ?admin_path ?name ?color ?base_dir ?sync_mode
@@ -1344,7 +1345,8 @@ let write_sources_file ~min_agreement ~uris client =
       Lwt_io.fprintf oc "%s" @@ Ezjsonm.value_to_string obj)
 
 let init_light ?path ?admin_path ?name ?color ?base_dir ?(min_agreement = 0.66)
-    ?event_level ?event_sections_levels ?(nodes_args = []) () =
+    ?event_level ?event_sections_levels ?(nodes_args = [])
+    ?(keys = default_keys) () =
   let filter_node_arg = function
     | Node.Connections _ | Synchronisation_threshold _ -> None
     | x -> Some x
@@ -1381,9 +1383,7 @@ let init_light ?path ?admin_path ?name ?color ?base_dir ?(min_agreement = 0.66)
   let json = JSON.parse_file (sources_file client) in
   Log.info "%s" @@ JSON.encode json ;
   Log.info "Importing keys" ;
-  let* () =
-    Lwt_list.iter_s (import_secret_key client) Constant.all_secret_keys
-  in
+  let* () = Lwt_list.iter_s (import_secret_key client) keys in
   Log.info "Syncing peers" ;
   let* () =
     assert (nodes <> []) ;
@@ -1423,7 +1423,7 @@ let get_parameter_file ?additional_bootstrap_account_count
 let init_with_node ?path ?admin_path ?name ?color ?base_dir ?event_level
     ?event_sections_levels
     ?(nodes_args = Node.[Connections 0; Synchronisation_threshold 0])
-    ?(keys = Constant.all_secret_keys) tag () =
+    ?(keys = default_keys) tag () =
   match tag with
   | (`Client | `Proxy) as mode ->
       let* node = Node.init ?event_level ?event_sections_levels nodes_args in
@@ -1440,14 +1440,14 @@ let init_with_node ?path ?admin_path ?name ?color ?base_dir ?event_level
       return (node, client)
   | `Light ->
       let* (client, node1, _) =
-        init_light ?path ?admin_path ?name ?color ?base_dir ~nodes_args ()
+        init_light ?path ?admin_path ?name ?color ?base_dir ~keys ~nodes_args ()
       in
       return (node1, client)
 
 let init_with_protocol ?path ?admin_path ?name ?color ?base_dir ?event_level
     ?event_sections_levels ?nodes_args ?additional_bootstrap_account_count
-    ?default_accounts_balance ?parameter_file ?timestamp_delay tag ~protocol ()
-    =
+    ?default_accounts_balance ?parameter_file ?timestamp_delay
+    ?(keys = default_keys) tag ~protocol () =
   let* (node, client) =
     init_with_node
       ?path
@@ -1458,6 +1458,7 @@ let init_with_protocol ?path ?admin_path ?name ?color ?base_dir ?event_level
       ?event_level
       ?event_sections_levels
       ?nodes_args
+      ~keys
       tag
       ()
   in
