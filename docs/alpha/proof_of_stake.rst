@@ -144,11 +144,11 @@ Proof-of-stake parameters
    * - Parameter name
      - Parameter value
    * - ``BLOCKS_PER_CYCLE``
-     - 8192 blocks
+     - 12288 blocks
    * - ``PRESERVED_CYCLES``
      - 5 cycles
    * - ``BLOCKS_PER_COMMITMENT``
-     - 64 blocks
+     - 96 blocks
    * -  ``MAX_ANON_OPS_PER_BLOCK``
      - 132 revelations
    * - ``SEED_NONCE_REVELATION_TIP``
@@ -156,7 +156,7 @@ Proof-of-stake parameters
    * - ``TOKENS_PER_ROLL``
      - 6,000 ꜩ
    * - ``BLOCKS_PER_STAKE_SNAPSHOT``
-     - 512 blocks
+     - 768 blocks
 
 
 Further External Resources
