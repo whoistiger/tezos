@@ -27,16 +27,16 @@ tezt:
     - .tezt_template
   parallel: 9
 
-# these are tezt tests as above, but run using the static binaries
-tezt:static-binaries:
-  extends:
-    - .integration_template
-    - .tezt_template
-  dependencies:
-    - build:static-x86_64-linux-binaries
-  parallel: 2
-  variables:
-    TESTS: "cli rpc"
+# # these are tezt tests as above, but run using the static binaries
+# tezt:static-binaries:
+#   extends:
+#     - .integration_template
+#     - .tezt_template
+#   dependencies:
+#     - build:static-x86_64-linux-binaries
+#   parallel: 2
+#   variables:
+#     TESTS: "cli rpc"
 
 # Note: if you reactivate this test and if you keep it manual, put it in the "manual" stage.
 #
