@@ -19,7 +19,7 @@
     TESTS: "-f double_bake.ml double baking accuser node"
   retry: 0
   script:
-    - dune exec tezt/tests/main.exe -- $TESTS --color --log-buffer-size 5000 --log-file tezt.log --test-timeout 180 --junit tezt-junit.xml --loop-count 40 --keep-going -j 4
+    - dune exec tezt/tests/main.exe -- $TESTS --color --log-buffer-size 5000 --log-file tezt.log --test-timeout 180 --junit tezt-junit.xml --loop-count 40 -j 4
 
 tezt:
   extends:
