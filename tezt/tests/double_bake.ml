@@ -128,7 +128,11 @@ let wait_for_denunciation_injection node client oph_promise =
 let double_bake =
   Protocol.register_test
     ~__FILE__
-    ~title:"double baking with accuser"
+    ~title:
+      (sf
+         "double baking with accuser%s"
+         (Option.fold ~none:"" ~some:(fun d -> ", delay: " ^ d)
+         @@ Sys.getenv_opt "TEZOS_ACCUSER_DELAY"))
     ~tags:["double"; "baking"; "accuser"; "node"]
   @@ fun protocol ->
   (* Step 1 and 2 *)

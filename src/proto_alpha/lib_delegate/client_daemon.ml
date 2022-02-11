@@ -115,6 +115,20 @@ module Accuser = struct
   let run (cctxt : #Protocol_client_context.full) ~chain ~preserved_levels
       ~keep_alive =
     let process () =
+      let delay =
+        Option.fold ~none:0.0 ~some:float_of_string
+        @@ Sys.getenv_opt "TEZOS_ACCUSER_DELAY"
+      in
+      cctxt#message
+        "Accuser v%s (%s) for %a is starting (sleep %f)."
+        Tezos_version.Version.current_string
+        Tezos_version.Current_git_info.abbreviated_commit_hash
+        Protocol_hash.pp_short
+        Protocol.hash
+        delay
+      >>= fun () ->
+      Lwt_unix.sleep delay >>= fun () ->
+      cctxt#message "Delay over." >>= fun () ->
       Client_baking_blocks.monitor_valid_blocks
         ~next_protocols:(Some [Protocol.hash])
         cctxt
