@@ -115,6 +115,13 @@ module Accuser = struct
   let run (cctxt : #Protocol_client_context.full) ~chain ~preserved_levels
       ~keep_alive =
     let process () =
+      cctxt#message
+        "Accuser v%s (%s) for %a is starting."
+        Tezos_version.Version.current_string
+        Tezos_version.Current_git_info.abbreviated_commit_hash
+        Protocol_hash.pp_short
+        Protocol.hash
+      >>= fun () ->
       Client_baking_blocks.monitor_valid_blocks
         ~next_protocols:(Some [Protocol.hash])
         cctxt
