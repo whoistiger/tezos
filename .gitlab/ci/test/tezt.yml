@@ -19,9 +19,10 @@
     TESTS: "-f double_bake.ml double baking accuser node"
   retry: 0
   script:
-    - TEZOS_ACCUSER_DELAY=$(printf %.10f\\n "$((CI_NODE_INDEX * 2))e-1" | sed 's/,/./')
+    # - TEZOS_ACCUSER_DELAY=$(printf %.10f\\n "$((CI_NODE_INDEX * 2))e-1" | sed 's/,/./')
+    - TEZOS_ACCUSER_DELAY=0.0
     - 'echo "Delay: $TEZOS_ACCUSER_DELAY"'
-    - TEZOS_ACCUSER_DELAY=$TEZOS_ACCUSER_DELAY dune exec tezt/tests/main.exe -- $TESTS --color --log-buffer-size 5000 --log-file tezt.log --test-timeout 60 --junit tezt-junit.xml --loop-count 10 --keep-going
+    - TEZOS_ACCUSER_DELAY=$TEZOS_ACCUSER_DELAY dune exec tezt/tests/main.exe -- $TESTS --color --log-buffer-size 5000 --log-file tezt.log --test-timeout 180 --junit tezt-junit.xml --loop-count 40 --keep-going -j 4
 
 tezt:
   extends:
