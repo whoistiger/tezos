@@ -175,7 +175,10 @@ let double_bake =
   let* client_3 = Client.init ~endpoint:(Node node_3) () in
 
   let* accuser_3 = Accuser.init ~protocol node_3 in
+
   let* () = Accuser.wait_for_ready accuser_3 in
+  (* wait a bit before connecting the nodes *)
+  let* () = Lwt_unix.sleep 20.0 in
 
   let denunciation = wait_for_denunciation accuser_3 in
   let denunciation_injection =
