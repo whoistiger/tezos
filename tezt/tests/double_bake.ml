@@ -173,7 +173,10 @@ let double_bake =
   (* Step 6 *)
   let* node_3 = Node.init [Synchronisation_threshold 0; Private_mode] in
   let* client_3 = Client.init ~endpoint:(Node node_3) () in
+
   let* accuser_3 = Accuser.init ~protocol node_3 in
+  let* () = Accuser.wait_for_ready accuser_3 in
+
   let denunciation = wait_for_denunciation accuser_3 in
   let denunciation_injection =
     wait_for_denunciation_injection node_3 client_3 denunciation
