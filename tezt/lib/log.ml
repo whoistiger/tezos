@@ -155,7 +155,7 @@ module Log_buffer = struct
   let capacity = Cli.options.log_buffer_size
 
   (* Each item is a tuple [(timestamp, color, prefix, prefix_color, progress, message)]. *)
-  let buffer = Array.make capacity (0., None, None, None, None, "")
+  let buffer = Array.make capacity (0., 0, None, None, None, None, "")
 
   (* Index where to add the next item. *)
   let next = ref 0
@@ -195,11 +195,12 @@ let output_timestamp output timestamp =
        (int_of_float ((timestamp -. float (truncate timestamp)) *. 1000.)))
 
 let log_line_to ~use_colors
-    (timestamp, color, prefix, prefix_color, progress, message) channel =
+    (timestamp, pid, color, prefix, prefix_color, progress, message) channel =
   let output = output_string channel in
   output "[" ;
   output_timestamp output timestamp ;
   output "] " ;
+  output @@ "(p" ^ string_of_int pid ^ ") " ;
   if use_colors then Option.iter output color ;
   Option.iter
     (fun prefix ->
@@ -227,6 +228,7 @@ let log_string ~(level : Cli.log_level) ?color ?prefix ?prefix_color
       let log_line message =
         let line =
           ( Unix.gettimeofday (),
+            Unix.getpid (),
             color,
             prefix,
             prefix_color,
