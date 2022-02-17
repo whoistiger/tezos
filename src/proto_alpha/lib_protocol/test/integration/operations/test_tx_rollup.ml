@@ -105,13 +105,18 @@ let check_batch_in_inbox :
     to not interfere with balances prediction. It returns the created
     context and [n] contracts. *)
 let context_init n =
-  Context.init
-    ~consensus_threshold:0
-    ~tx_rollup_enable:true
-    ~endorsing_reward_per_slot:Tez.zero
-    ~baking_reward_bonus_per_slot:Tez.zero
-    ~baking_reward_fixed_portion:Tez.zero
-    n
+  let constants =
+    {
+      Default_parameters.constants_test with
+      endorsing_reward_per_slot = Tez.zero;
+      baking_reward_bonus_per_slot = Tez.zero;
+      baking_reward_fixed_portion = Tez.zero;
+      consensus_threshold = 0;
+      hard_gas_limit_per_operation = Gas.Arith.(integral_of_int_exn 520_000);
+      tx_rollup_enable = true;
+    }
+  in
+  Context.init_with_constants constants n
 
 (** [originate b contract] originates a tx_rollup from [contract],
     and returns the new block and the tx_rollup address. *)
