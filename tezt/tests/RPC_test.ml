@@ -121,6 +121,7 @@ let check_rpc ~group_name ~protocols ~test_mode_tag
           ?parameter_file
           ?nodes_args:node_parameters
           ~protocol
+          ~keys:Constant.all_secret_keys
           client_mode_tag
           ()
       in
