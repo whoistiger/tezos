@@ -69,6 +69,7 @@ let test_stresstest_sources_format =
              counter in the context). Once the issue is fixed, the
              [Disable_operations_precheck] flag above can be removed. *)
         ]
+      ~keys:Constant.all_secret_keys
       ~additional_bootstrap_account_count:1
       `Client
       ~protocol
@@ -212,6 +213,7 @@ let test_stresstest_applied_new_bootstraps =
              counter in the context). Once the issue is fixed, the
              [Disable_operations_precheck] flag above can be removed. *)
         ]
+      ~keys:Constant.all_secret_keys
       ~additional_bootstrap_account_count:n_new_accounts
       `Client
       ~protocol
@@ -251,6 +253,7 @@ let test_stresstest_applied_1op =
   let* (node, client) =
     Client.init_with_protocol
       ~nodes_args:[Synchronisation_threshold 0; Connections 0]
+      ~keys:Constant.all_secret_keys
       ~additional_bootstrap_account_count:
         (n_accounts - Constant.default_bootstrap_count)
       `Client
@@ -289,6 +292,7 @@ let init_nodes_star ~protocol ~n_nodes ~accounts_per_node
       ~nodes_args:
         (Node.[Synchronisation_threshold 0; Connections (n_nodes - 1)]
         @ additional_node_args)
+      ~keys:Constant.all_secret_keys
       ~additional_bootstrap_account_count:
         ((n_nodes * accounts_per_node) - Constant.default_bootstrap_count)
       `Client
