@@ -5,6 +5,7 @@
 #   make && dune exec tezt/tests/main.exe -- --record tezt/test-results.json
 
 .tezt_template:
+  retry: 0
   artifacts:
     reports:
       junit: tezt-junit.xml
@@ -18,35 +19,35 @@
   variables:
     TESTS: ""
   script:
-    - dune exec tezt/tests/main.exe -- $TESTS --color --log-buffer-size 5000 --log-file tezt.log --global-timeout 3300 --junit tezt-junit.xml --from-record tezt/records --job $CI_NODE_INDEX/$CI_NODE_TOTAL --record tezt-results-$CI_NODE_INDEX.json -j 4
+    - dune exec tezt/tests/main.exe -- $TESTS --color --log-buffer-size 5000 --log-file tezt.log --global-timeout 3300 --junit tezt-junit.xml --from-record tezt/records --job $CI_NODE_INDEX/$CI_NODE_TOTAL --record tezt-results-$CI_NODE_INDEX.json --keep-going
 
 tezt:
   extends:
     - .integration_template
     - .template__coverage_files
     - .tezt_template
-  parallel: 9
+  parallel: 30
 
-# these are tezt tests as above, but run using the static binaries
-tezt:static-binaries:
-  extends:
-    - .integration_template
-    - .tezt_template
-  dependencies:
-    - build:static-x86_64-linux-binaries
-  parallel: 2
-  variables:
-    TESTS: "cli"
+# # these are tezt tests as above, but run using the static binaries
+# tezt:static-binaries:
+#   extends:
+#     - .integration_template
+#     - .tezt_template
+#   dependencies:
+#     - build:static-x86_64-linux-binaries
+#   parallel: 2
+#   variables:
+#     TESTS: "cli"
 
-# Long Tezt tests are not ran in the CI, but we want them to type-check so that
-# they can be built in the performance regression test framework executors.
-tezt:build-long:
-  extends:
-    - .build_template
-    - .rules_template__development
-  stage: test
-  script:
-    - dune build @tezt/long_tests/check
+# # Long Tezt tests are not ran in the CI, but we want them to type-check so that
+# # they can be built in the performance regression test framework executors.
+# tezt:build-long:
+#   extends:
+#     - .build_template
+#     - .rules_template__development
+#   stage: test
+#   script:
+#     - dune build @tezt/long_tests/check
 
 # Note: if you reactivate this test and if you keep it manual, put it in the "manual" stage.
 #
