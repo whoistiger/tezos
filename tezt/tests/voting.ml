@@ -1165,17 +1165,6 @@ let test_user_activated_protocol_override_baker_vote ~from_protocol ~to_protocol
      activates, therefore we do not resolve yet. *)
   let _to_protocol_baker_p = Baker.init ~protocol:to_protocol node client in
 
-  (* We also start an accuser for the [to_protocol] protocol. After the
-     protocol switch, we verify that it starts registering blocks. *)
-  let to_protocol_accuser = Accuser.create ~protocol:to_protocol node in
-  let to_protocol_accuser_received_block =
-    Accuser.wait_for
-      to_protocol_accuser
-      "accuser_processed_block.v0"
-      (fun json -> Some (json |> JSON.as_string))
-  in
-  let* _ = Accuser.run to_protocol_accuser in
-
   Log.info "Waiting for the start of the second proposal period" ;
   let* (_ : int) = wait_for_second_proposal_period_start_p in
   let* () =
@@ -1278,16 +1267,6 @@ let test_user_activated_protocol_override_baker_vote ~from_protocol ~to_protocol
 
   (* Bake a few blocks for good measure *)
   let* (_ : int) = wait_for_final_bakes_p in
-  Log.info
-    "Verify that the replacement accuser has registered at least one block" ;
-  let* accuser_first_block_hash = to_protocol_accuser_received_block in
-  let* proposal_first_block_hash =
-    RPC.get_block_hash
-      ~block:(string_of_int expected_level_of_next_proposal)
-      client
-  in
-  Check.((accuser_first_block_hash = proposal_first_block_hash) string)
-    ~error_msg:"Expected the accuser to find %R, found %L" ;
 
   unit
 
