@@ -231,6 +231,79 @@ let test_unrevealed () =
   Assert.equal_tez ~loc:__LOC__ info_before.full_balance info_after.full_balance
   >>=? fun () -> return_unit
 
+(* We check that bounds used in [Seed_storage.for_cycle] are as expected. *)
+let test_cycle_bounds () =
+  Context.init ~consensus_threshold:0 1 >>=? fun (b, _accounts) ->
+  Context.get_constants (B b) >>=? fun csts ->
+  let past_offset = csts.parametric.max_slashing_period - 1 in
+  let future_offset = csts.parametric.preserved_cycles in
+  let open Alpha_context.Cycle in
+  let expected_error_message direction current_cycle =
+    match direction with
+    | `Past ->
+        let oldest_cycle = Stdlib.Option.get (sub current_cycle past_offset) in
+        let older_cycle = Stdlib.Option.get (sub oldest_cycle 1) in
+        Format.asprintf
+          "The seed for cycle %a has been cleared from the context  (oldest \
+           known seed is for cycle %a)"
+          pp
+          older_cycle
+          pp
+          oldest_cycle
+    | `Future ->
+        let latest_cycle = add current_cycle future_offset in
+        let later_cycle = add latest_cycle 1 in
+        Format.asprintf
+          "The seed for cycle %a has not been computed yet  (latest known seed \
+           is for cycle %a)"
+          pp
+          later_cycle
+          pp
+          latest_cycle
+  in
+  let cycle = root in
+  Context.get_bakers ~cycle:(add cycle future_offset) (B b) >>=? fun _ ->
+  Context.get_bakers ~cycle:(add cycle (future_offset + 1)) (B b) >>= fun res ->
+  Assert.proto_error_with_info
+    ~loc:__LOC__
+    ~error_info_field:`Message
+    res
+    (expected_error_message `Future cycle)
+  >>=? fun () ->
+  (* first cycle is not special (it used to be); we check that *)
+  Block.bake_until_cycle_end b >>=? fun b ->
+  let cycle = add cycle 1 in
+  Context.get_bakers ~cycle:root (B b) >>=? fun _ ->
+  Context.get_bakers ~cycle:(add cycle future_offset) (B b) >>=? fun _ ->
+  Context.get_bakers ~cycle:(add cycle (future_offset + 1)) (B b) >>= fun res ->
+  Assert.proto_error_with_info
+    ~loc:__LOC__
+    res
+    ~error_info_field:`Message
+    (expected_error_message `Future cycle)
+  >>=? fun () ->
+  Block.bake_until_n_cycle_end past_offset b >>=? fun b ->
+  let cycle = add cycle past_offset in
+  Context.get_bakers ~cycle:(Stdlib.Option.get (sub cycle past_offset)) (B b)
+  >>=? fun _ ->
+  Context.get_bakers
+    ~cycle:(Stdlib.Option.get (sub cycle (past_offset + 1)))
+    (B b)
+  >>= fun res ->
+  Assert.proto_error_with_info
+    ~loc:__LOC__
+    res
+    ~error_info_field:`Message
+    (expected_error_message `Past cycle)
+  >>=? fun () ->
+  Context.get_bakers ~cycle:(add cycle future_offset) (B b) >>=? fun _ ->
+  Context.get_bakers ~cycle:(add cycle (future_offset + 1)) (B b) >>= fun res ->
+  Assert.proto_error_with_info
+    ~loc:__LOC__
+    res
+    ~error_info_field:`Message
+    (expected_error_message `Future cycle)
+
 let tests =
   [
     Tztest.tztest "no commitment" `Quick test_no_commitment;
@@ -243,4 +316,5 @@ let tests =
       `Quick
       test_revelation_missing_and_late;
     Tztest.tztest "test unrevealed" `Quick test_unrevealed;
+    Tztest.tztest "for_cycle cycle bounds" `Quick test_cycle_bounds;
   ]
