@@ -148,8 +148,8 @@ let get_voting_power = Delegate_services.voting_power rpc_ctxt
 
 let get_total_voting_power = Alpha_services.Voting.total_voting_power rpc_ctxt
 
-let get_bakers ?(filter = fun _x -> true) ctxt =
-  Plugin.RPC.Baking_rights.get rpc_ctxt ctxt >|=? fun bakers ->
+let get_bakers ?(filter = fun _x -> true) ?cycle ctxt =
+  Plugin.RPC.Baking_rights.get rpc_ctxt ?cycle ctxt >|=? fun bakers ->
   List.filter filter bakers
   |> List.map (fun p -> p.Plugin.RPC.Baking_rights.delegate)
 
