@@ -38,6 +38,7 @@ let constants_mainnet =
           baking_reward_fixed_portion;
           baking_reward_bonus_per_slot;
           endorsing_reward_per_slot;
+          liquidity_baking_subsidy;
         } =
     Constants.Generated.generate
       ~consensus_committee_size
@@ -65,7 +66,7 @@ let constants_mainnet =
     quorum_max = 70_00l;
     min_proposal_quorum = 5_00l;
     (* liquidity_baking_subsidy is 1/16th of maximum total rewards for a block *)
-    liquidity_baking_subsidy = Tez.of_mutez_exn 2_500_000L;
+    liquidity_baking_subsidy (* 2_500_000 mutez *);
     (* level after protocol activation when liquidity baking shuts off:
          about 6 months after first activation on mainnet *)
     liquidity_baking_sunset_level = 3_063_809l;
@@ -131,6 +132,7 @@ let constants_sandbox =
           baking_reward_fixed_portion;
           baking_reward_bonus_per_slot;
           endorsing_reward_per_slot;
+          liquidity_baking_subsidy;
         } =
     Constants.Generated.generate
       ~consensus_committee_size
@@ -145,6 +147,7 @@ let constants_sandbox =
     cycles_per_voting_period = 8l;
     proof_of_work_threshold = Int64.of_int (-1);
     liquidity_baking_sunset_level = 128l;
+    liquidity_baking_subsidy;
     minimal_block_delay = Period.of_seconds_exn (Int64.of_int block_time);
     delay_increment_per_round = Period.one_second;
     consensus_committee_size = 256;
@@ -164,6 +167,7 @@ let constants_test =
           baking_reward_fixed_portion;
           baking_reward_bonus_per_slot;
           endorsing_reward_per_slot;
+          liquidity_baking_subsidy;
         } =
     Constants.Generated.generate
       ~consensus_committee_size
@@ -178,6 +182,7 @@ let constants_test =
     cycles_per_voting_period = 2l;
     proof_of_work_threshold = Int64.of_int (-1);
     liquidity_baking_sunset_level = 4096l;
+    liquidity_baking_subsidy;
     consensus_committee_size;
     consensus_threshold (* 17 slots *);
     max_slashing_period = 2;
