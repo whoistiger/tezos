@@ -664,7 +664,7 @@ module Test_batch_encodings = struct
 end
 
 let tests =
-  [tztest "test irmin storage" `Quick @@ wrap_test test_irmin_storage]
-  @ Test_Address_index.tests @ Test_Ticket_index.tests
-  @ Test_Address_medata.tests @ Test_Ticket_ledger.tests
-  @ Test_batch_encodings.tests
+  (* [tztest "test irmin storage" `Quick @@ wrap_test test_irmin_storage]
+   * @ Test_Address_index.tests @ Test_Ticket_index.tests
+   * @ Test_Address_medata.tests @ Test_Ticket_ledger.tests *)
+  Test_batch_encodings.tests
