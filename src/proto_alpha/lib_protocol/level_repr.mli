@@ -86,7 +86,7 @@ val cycle_eras_encoding : cycle_eras Data_encoding.t
 val create_cycle_eras : cycle_era list -> cycle_eras tzresult
 
 (** Add a new cycle era *)
-val add_cycle_era : cycle_eras -> cycle_era -> cycle_eras tzresult
+val add_cycle_era : cycle_era -> cycle_eras -> cycle_eras tzresult
 
 (** Returns the current era *)
 val current_era : cycle_eras -> cycle_era
