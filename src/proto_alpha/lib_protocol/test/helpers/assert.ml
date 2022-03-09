@@ -45,7 +45,7 @@ let proto_error ~loc v f =
           f err
       | _ -> false)
 
-let proto_error_with_info ~loc ?(error_info_field = `Title) v
+let proto_error_with_info ?(error_info_field = `Title) ~loc v
     expected_error_info =
   let info err =
     let i = Error_monad.find_info_of_error (Environment.wrap_tzerror err) in
@@ -56,8 +56,8 @@ let proto_error_with_info ~loc ?(error_info_field = `Title) v
     | `Message -> Format.asprintf "%a" Environment.Error_monad.pp err
   in
   proto_error ~loc v (function err ->
-      Format.printf "THE ERROR IS: %s@." (info err) ;
-      Format.printf "    EXPECTED: %s@." expected_error_info ;
+      Format.printf "@[<v 4>THE ERROR IS: %s@,EXPECTED: %s@]@." 
+         (info err) expected_error_info ;
       String.equal (info err) expected_error_info)
 
 let equal ~loc (cmp : 'a -> 'a -> bool) msg pp a b =
