@@ -82,13 +82,21 @@ The field ``kind`` allows to identify the type of container account, it can have
 * ``"freezer"`` represents frozen accounts, and comes with the additional field ``category`` that can have one of the following values:
 
   - ``"legacy_deposits"``, ``"legacy_fees"``, or ``"legacy_rewards"`` represent the accounts of frozen deposits, frozen fees or frozen rewards up to protocol HANGZHOU.
-    These types of accounts are further identified by the following additional fields:
+    Accounts in this category are further identified by the following additional fields:
 
     - the field ``delegate`` contains the public key hash of the delegate who owns the frozen funds
     - the field ``cycle`` contains the cycle at which the funds have been deposited or granted.
 
-  - ``"deposits"`` represents the account of frozen deposits in subsequent protocols (replacing the legacy container account ``"legacy_deposits"`` above).
-    This type of account is further identified by the additional field ``delegate`` whose value is the public key hash of the delegate who owns the frozen funds.
+  - ``"deposits"`` represents the accounts of frozen deposits in subsequent protocols (replacing the legacy container account ``"legacy_deposits"`` above).
+    Accounts in this category are further identified by the additional field ``delegate`` whose value is the public key hash of the delegate who owns the frozen funds.
+
+  - ``"bonds"`` represents the accounts of frozen bonds.
+    Bonds are like deposits.
+    However, they can be associated to implicit or originated accounts, unlike deposits that only apply to implicit accounts that are also delegates.
+    Accounts in this category are further identified by the following additional fields:
+
+    - the field ``contract`` contains the public key hash of the implicit account, or the contract hash of the originated account
+    - the field ``bond_id`` contains the identifier of the bond (e.g. a rollup hash if the bond is associated to a transaction rollup).
 * ``"accumulator"`` represents accounts used to store tokens for some short period of time.
   This type of account is further identified by the additional field ``category`` whose (only possible) value ``"block fees"`` designates the container account used to collect manager operation fees while block's operations are being applied.
   Other categories may be added in the future.
