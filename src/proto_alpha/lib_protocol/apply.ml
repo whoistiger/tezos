@@ -1755,6 +1755,17 @@ let apply_external_manager_operation_content :
       let consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt in
       let result = Sc_rollup_publish_result {staked_hash; consumed_gas} in
       return (ctxt, result, [])
+  | Sc_rollup_refute {rollup; commitment} ->
+      Sc_rollup.refute_commitment ctxt rollup source commitment
+      >>=? fun (game, ctxt) ->
+      let consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt in
+      let result = Sc_rollup_refute_result {game; consumed_gas} in
+      return (ctxt, result, [])
+  | Sc_rollup_game_move {game; move} ->
+      Sc_rollup.progress_game ctxt game move source >>=? fun (outcome, ctxt) ->
+      let consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt in
+      let result = Sc_rollup_game_move_result {outcome; consumed_gas} in
+      return (ctxt, result, [])
 
 type success_or_failure = Success of context | Failure
 

@@ -401,3 +401,21 @@ val list : Raw_context.t -> Sc_rollup_repr.t list tzresult Lwt.t
    originated. *)
 val initial_level :
   Raw_context.t -> Sc_rollup_repr.t -> Raw_level_repr.t tzresult Lwt.t
+
+(** XXX Write docstring.
+  *)
+val refute_commitment :
+  Raw_context.t ->
+  Sc_rollup_repr.t ->
+  Sc_rollup_repr.Staker.t ->
+  Sc_rollup_repr.Commitment_hash.t ->
+  (Sc_rollup_repr.Game.t * Raw_context.t) tzresult Lwt.t
+
+(** XXX Write docstring.
+  *)
+val progress_game :
+  Raw_context.t ->
+  Sc_rollup_repr.Game.t ->
+  Sc_rollup_repr.Game.Move.t ->
+  Sc_rollup_repr.Staker.t ->
+  (Sc_rollup_repr.Game.Outcome.t option * Raw_context.t) tzresult Lwt.t

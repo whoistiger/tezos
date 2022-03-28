@@ -97,6 +97,10 @@ module Kind = struct
 
   type sc_rollup_publish = Sc_rollup_publish_kind
 
+  type sc_rollup_refute = Sc_rollup_refute_kind
+
+  type sc_rollup_game_move = Sc_rollup_game_move_kind
+
   type 'a manager =
     | Reveal_manager_kind : reveal manager
     | Transaction_manager_kind : transaction manager
@@ -120,6 +124,8 @@ module Kind = struct
     | Sc_rollup_add_messages_manager_kind : sc_rollup_add_messages manager
     | Sc_rollup_cement_manager_kind : sc_rollup_cement manager
     | Sc_rollup_publish_manager_kind : sc_rollup_publish manager
+    | Sc_rollup_refute_manager_kind : sc_rollup_refute manager
+    | Sc_rollup_game_move_manager_kind : sc_rollup_game_move manager
 end
 
 type 'a consensus_operation_type =
@@ -373,6 +379,16 @@ and _ manager_operation =
       commitment : Sc_rollup_repr.Commitment.t;
     }
       -> Kind.sc_rollup_publish manager_operation
+  | Sc_rollup_refute : {
+      rollup : Sc_rollup_repr.t;
+      commitment : Sc_rollup_repr.Commitment_hash.t;
+    }
+      -> Kind.sc_rollup_refute manager_operation
+  | Sc_rollup_game_move : {
+      game : Sc_rollup_repr.Game.t;
+      move : Sc_rollup_repr.Game.Move.t;
+    }
+      -> Kind.sc_rollup_game_move manager_operation
 
 and counter = Z.t
 
@@ -399,6 +415,8 @@ let manager_kind : type kind. kind manager_operation -> kind Kind.manager =
   | Sc_rollup_add_messages _ -> Kind.Sc_rollup_add_messages_manager_kind
   | Sc_rollup_cement _ -> Kind.Sc_rollup_cement_manager_kind
   | Sc_rollup_publish _ -> Kind.Sc_rollup_publish_manager_kind
+  | Sc_rollup_refute _ -> Kind.Sc_rollup_refute_manager_kind
+  | Sc_rollup_game_move _ -> Kind.Sc_rollup_game_move_manager_kind
 
 type packed_manager_operation =
   | Manager : 'kind manager_operation -> packed_manager_operation
@@ -481,6 +499,10 @@ let sc_rollup_operation_add_message_tag = sc_rollup_operation_tag_offset + 1
 let sc_rollup_operation_cement_tag = sc_rollup_operation_tag_offset + 2
 
 let sc_rollup_operation_publish_tag = sc_rollup_operation_tag_offset + 3
+
+let sc_rollup_operation_refute_tag = sc_rollup_operation_tag_offset + 4
+
+let sc_rollup_operation_game_move_tag = sc_rollup_operation_tag_offset + 5
 
 module Encoding = struct
   open Data_encoding
@@ -961,6 +983,41 @@ module Encoding = struct
           inj =
             (fun (rollup, commitment) -> Sc_rollup_publish {rollup; commitment});
         }
+
+    let[@coq_axiom_with_reason "gadt"] sc_rollup_refute_case =
+      MCase
+        {
+          tag = sc_rollup_operation_refute_tag;
+          name = "sc_rollup_refute";
+          encoding =
+            obj2
+              (req "rollup" Sc_rollup_repr.encoding)
+              (req "commitment" Sc_rollup_repr.Commitment_hash.encoding);
+          select =
+            (function
+            | Manager (Sc_rollup_refute _ as op) -> Some op | _ -> None);
+          proj =
+            (function
+            | Sc_rollup_refute {rollup; commitment} -> (rollup, commitment));
+          inj =
+            (fun (rollup, commitment) -> Sc_rollup_refute {rollup; commitment});
+        }
+
+    let[@coq_axiom_with_reason "gadt"] sc_rollup_game_move_case =
+      MCase
+        {
+          tag = sc_rollup_operation_game_move_tag;
+          name = "sc_rollup_game_move";
+          encoding =
+            obj2
+              (req "game" Sc_rollup_repr.Game.encoding)
+              (req "move" Sc_rollup_repr.Game.Move.encoding);
+          select =
+            (function
+            | Manager (Sc_rollup_game_move _ as op) -> Some op | _ -> None);
+          proj = (function Sc_rollup_game_move {game; move} -> (game, move));
+          inj = (fun (game, move) -> Sc_rollup_game_move {game; move});
+        }
   end
 
   type 'b case =
@@ -1321,6 +1378,16 @@ module Encoding = struct
       sc_rollup_operation_publish_tag
       Manager_operations.sc_rollup_publish_case
 
+  let sc_rollup_refute_case =
+    make_manager_case
+      sc_rollup_operation_refute_tag
+      Manager_operations.sc_rollup_refute_case
+
+  let sc_rollup_game_move_case =
+    make_manager_case
+      sc_rollup_operation_game_move_tag
+      Manager_operations.sc_rollup_game_move_case
+
   let contents_encoding =
     let make (Case {tag; name; encoding; select; proj; inj}) =
       case
@@ -1362,6 +1429,8 @@ module Encoding = struct
            make sc_rollup_add_messages_case;
            make sc_rollup_cement_case;
            make sc_rollup_publish_case;
+           make sc_rollup_refute_case;
+           make sc_rollup_game_move_case;
          ]
 
   let contents_list_encoding =
@@ -1575,6 +1644,10 @@ let equal_manager_operation_kind :
   | (Sc_rollup_cement _, _) -> None
   | (Sc_rollup_publish _, Sc_rollup_publish _) -> Some Eq
   | (Sc_rollup_publish _, _) -> None
+  | (Sc_rollup_refute _, Sc_rollup_refute _) -> Some Eq
+  | (Sc_rollup_refute _, _) -> None
+  | (Sc_rollup_game_move _, Sc_rollup_game_move _) -> Some Eq
+  | (Sc_rollup_game_move _, _) -> None
 
 let equal_contents_kind : type a b. a contents -> b contents -> (a, b) eq option
     =
