@@ -96,7 +96,7 @@ module Make : functor (PVM : Sc_rollup_PVM_sem.S) -> sig
     type section = {
       section_start_state : PVM.hash;
       section_start_at : tick;
-      section_stop_state : PVM.hash;
+      section_stop_state : PVM.hash option;
       section_stop_at : tick;
     }
 
@@ -108,7 +108,7 @@ module Make : functor (PVM : Sc_rollup_PVM_sem.S) -> sig
         sections that form a partition of this section. *)
     type dissection
 
-    val dissection_encoding : dissection option Data_encoding.t
+    val dissection_encoding : dissection Data_encoding.t
 
     val pp_dissection : Format.formatter -> dissection -> unit
 
@@ -191,10 +191,10 @@ module Make : functor (PVM : Sc_rollup_PVM_sem.S) -> sig
     turn : player;
     start_state : PVM.hash;
     start_at : tick;
-    player_stop_state : PVM.hash;
-    opponent_stop_state : PVM.hash;
+    player_stop_state : PVM.hash option;
+    opponent_stop_state : PVM.hash option;
     stop_at : tick;
-    current_dissection : Section.dissection option;
+    current_dissection : Section.dissection;
   }
 
   val encoding : t Data_encoding.t
@@ -205,7 +205,10 @@ module Make : functor (PVM : Sc_rollup_PVM_sem.S) -> sig
       phase composed of refinement steps and a final step, the
       conclusion. *)
   type conflict_resolution_step =
-    | Refine of {stop_state : PVM.hash; next_dissection : Section.dissection}
+    | Refine of {
+        stop_state : PVM.hash option;
+        next_dissection : Section.dissection;
+      }
         (** Assuming a current [dissection], a [section] has been chosen and
             [next_dissection] is a dissection of this section. [stop_state]
             is a state which is different from the one exposed in for the
@@ -229,11 +232,22 @@ module Make : functor (PVM : Sc_rollup_PVM_sem.S) -> sig
         conflict_resolution_step : conflict_resolution_step;
       }
 
-  (** To start the game, the committer must have made a section public... *)
+  (** To start the game, a committer must have made a section public.
+      Note: it is impossible for this section to have
+      [section_stop_state] equal to [None], because a commitment must
+      provide an actual hash. *)
   type commit = Commit of Section.section
 
-  (** ... and the refuter must have started a dispute. *)
-  type refutation = RefuteByConflict of conflict_resolution_step
+  (** The game starts when a refuter provides a refutation. There are
+      two cases: *)
+  type refutation =
+    | RefuteByConflict of conflict_resolution_step
+        (** The refuter claims a mistake somewhere between the commit and
+            its parent. *)
+    | RefuteByPrematureCommit of Sc_rollup_PVM_sem.input option * PVM.proof
+        (** The refuter agrees that the commit is a correct state of the
+            PVM execution, but claims that there are more steps to perform 
+            or more inputs to receive from the inbox. *)
 
   (** The game can stop for two reasons: *)
   type reason =
@@ -260,9 +274,17 @@ module Make : functor (PVM : Sc_rollup_PVM_sem.S) -> sig
   val pp_move : Format.formatter -> move -> unit
 
   (** [initial] is the initial game state from the commit and the
-     refutation. The first player to play is the refuter, this
-     function also returns refuter's first move. *)
-  val initial : commit -> conflict_resolution_step -> t * move
+      refutation. The first player to play is the refuter, this
+      function also returns refuter's first move.
+      
+      This function takes the [commit] and turns it into an initial
+      dissection. This dissection contains two sections; the first is
+      from the previous commit to the current commit, the second is a
+      single-tick section starting at the current commit and with
+      [section_stop_state] set to [None]. This represents the fact that
+      the commitment claims the final state as a blocking state, and
+      allows the refuter to challenge that. *)
+  val initial : commit -> refutation -> t * move
 
   (** [play game move] returns the result of the given [move] applied
       on [game]. *)

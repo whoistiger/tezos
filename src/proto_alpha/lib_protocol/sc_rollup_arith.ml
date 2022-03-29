@@ -37,7 +37,7 @@ module type P = sig
 
   val proof_start_state : proof -> State_hash.t
 
-  val proof_stop_state : proof -> State_hash.t
+  val proof_stop_state : proof -> State_hash.t option
 
   val verify_proof :
     proof ->
@@ -855,8 +855,9 @@ module ProtocolImplementation = Make (struct
   let proof_start_state proof =
     kinded_hash_to_state_hash proof.Context.Proof.before
 
+  (* TODO #2759: make this generate None correctly *)
   let proof_stop_state proof =
-    kinded_hash_to_state_hash proof.Context.Proof.after
+    Some (kinded_hash_to_state_hash proof.Context.Proof.after)
 
   let proof_encoding = Context.Proof_encoding.V2.Tree32.tree_proof_encoding
 end)

@@ -35,7 +35,7 @@ module Make (PVM : Sc_rollup_PVM_sem.S) = struct
     type section = {
       section_start_state : PVM.hash;
       section_start_at : tick;
-      section_stop_state : PVM.hash;
+      section_stop_state : PVM.hash option;
       section_stop_at : tick;
     }
 
@@ -67,17 +67,16 @@ module Make (PVM : Sc_rollup_PVM_sem.S) = struct
         (obj4
            (req "section_start_state" State_hash.encoding)
            (req "section_start_at" Sc_rollup_tick_repr.encoding)
-           (req "section_stop_state" State_hash.encoding)
+           (req "section_stop_state" (option State_hash.encoding))
            (req "section_stop_at" Sc_rollup_tick_repr.encoding))
 
     let dissection_encoding =
       let open Data_encoding in
       let open Sc_rollup_tick_repr in
-      option
-      @@ conv
-           (fun map -> List.of_seq @@ Map.to_seq map)
-           (fun list -> Map.of_seq @@ List.to_seq list)
-           (list @@ tup2 encoding section_encoding)
+      conv
+        (fun map -> List.of_seq @@ Map.to_seq map)
+        (fun list -> Map.of_seq @@ List.to_seq list)
+        (list @@ tup2 encoding section_encoding)
 
     let empty_dissection = Sc_rollup_tick_repr.Map.empty
 
@@ -110,7 +109,7 @@ module Make (PVM : Sc_rollup_PVM_sem.S) = struct
         s.section_start_state
         Sc_rollup_tick_repr.pp
         s.section_start_at
-        State_hash.pp
+        (Format.pp_print_option State_hash.pp)
         s.section_stop_state
         Sc_rollup_tick_repr.pp
         s.section_stop_at
@@ -124,13 +123,6 @@ module Make (PVM : Sc_rollup_PVM_sem.S) = struct
           Format.fprintf ppf "key = %a \n val = %a\n" pp key pp_section b)
         ppf
         list
-
-    let pp_optional_dissection d =
-      Format.pp_print_option
-        ~none:(fun ppf () ->
-          Format.pp_print_text ppf "no dissection at the moment")
-        pp_dissection
-        d
 
     let valid_section ({section_start_at; section_stop_at; _} : section) =
       Sc_rollup_tick_repr.(section_stop_at > section_start_at)
@@ -180,10 +172,10 @@ module Make (PVM : Sc_rollup_PVM_sem.S) = struct
     turn : player;
     start_state : PVM.hash;
     start_at : tick;
-    player_stop_state : PVM.hash;
-    opponent_stop_state : PVM.hash;
+    player_stop_state : PVM.hash option;
+    opponent_stop_state : PVM.hash option;
     stop_at : tick;
-    current_dissection : Section.dissection option;
+    current_dissection : Section.dissection;
   }
 
   let encoding =
@@ -225,13 +217,16 @@ module Make (PVM : Sc_rollup_PVM_sem.S) = struct
          (req "turn" player_encoding)
          (req "start_state" State_hash.encoding)
          (req "start_at" Sc_rollup_tick_repr.encoding)
-         (req "player_stop_state" State_hash.encoding)
-         (req "oponent_stop_state" State_hash.encoding)
+         (req "player_stop_state" (option State_hash.encoding))
+         (req "oponent_stop_state" (option State_hash.encoding))
          (req "stop_at" Sc_rollup_tick_repr.encoding)
          (req "current_dissection" Section.dissection_encoding))
 
   type conflict_resolution_step =
-    | Refine of {stop_state : PVM.hash; next_dissection : Section.dissection}
+    | Refine of {
+        stop_state : PVM.hash option;
+        next_dissection : Section.dissection;
+      }
     | Conclude of Sc_rollup_PVM_sem.input option * PVM.proof
 
   type move =
@@ -242,7 +237,9 @@ module Make (PVM : Sc_rollup_PVM_sem.S) = struct
 
   type commit = Commit of Section.section
 
-  type refutation = RefuteByConflict of conflict_resolution_step
+  type refutation =
+    | RefuteByConflict of conflict_resolution_step
+    | RefuteByPrematureCommit of Sc_rollup_PVM_sem.input option * PVM.proof
 
   type reason = InvalidMove | ConflictResolved
 
@@ -275,13 +272,13 @@ module Make (PVM : Sc_rollup_PVM_sem.S) = struct
       g.start_state
       Sc_rollup_tick_repr.pp
       g.start_at
-      State_hash.pp
+      (Format.pp_print_option State_hash.pp)
       g.player_stop_state
-      State_hash.pp
+      (Format.pp_print_option State_hash.pp)
       g.opponent_stop_state
       Sc_rollup_tick_repr.pp
       g.stop_at
-      Section.pp_optional_dissection
+      Section.pp_dissection
       g.current_dissection
       (match g.turn with Committer -> "committer" | Refuter -> "refuter")
 
@@ -296,7 +293,7 @@ module Make (PVM : Sc_rollup_PVM_sem.S) = struct
           "conflict is inside %a, should end with %a, new dissection = %a"
           Section.pp_section
           choice
-          State_hash.pp
+          (Format.pp_print_option State_hash.pp)
           stop_state
           Section.pp_dissection
           next_dissection
@@ -316,38 +313,67 @@ module Make (PVM : Sc_rollup_PVM_sem.S) = struct
           choice
           State_hash.pp
           (PVM.proof_start_state proof)
-          State_hash.pp
+          (Format.pp_print_option State_hash.pp)
           (PVM.proof_stop_state proof)
           using_optional_input
 
   let conflict_found (game : t) =
     Sc_rollup_tick_repr.(Z.equal (distance game.stop_at game.start_at) Z.one)
 
-  let stop_state = function
-    | Refine {stop_state; _} -> stop_state
-    | Conclude (_, proof) -> PVM.proof_stop_state proof
+  let refutation_stop_state = function
+    | RefuteByConflict (Refine {stop_state; _}) -> stop_state
+    | RefuteByConflict (Conclude (_, proof)) -> PVM.proof_stop_state proof
+    | RefuteByPrematureCommit (_, proof) -> PVM.proof_stop_state proof
 
-  let initial (Commit commit) (refutation : conflict_resolution_step) =
+  let initial (Commit commit) (refutation : refutation) =
+    let blocking_section : Section.section =
+      {
+        section_start_state =
+          (match commit.section_stop_state with
+          | Some hash -> hash
+          | None -> assert false);
+        section_start_at = commit.section_stop_at;
+        section_stop_state = None;
+        section_stop_at = Sc_rollup_tick_repr.next commit.section_stop_at;
+      }
+    in
+    let current_dissection =
+      Section.add_section
+        blocking_section
+        (Section.add_section commit Section.empty_dissection)
+    in
     let game =
       {
         start_state = commit.section_start_state;
         start_at = commit.section_start_at;
-        opponent_stop_state = commit.section_stop_state;
-        stop_at = commit.section_stop_at;
-        player_stop_state = stop_state refutation;
-        current_dissection = None;
+        opponent_stop_state = None;
+        stop_at = Sc_rollup_tick_repr.next commit.section_stop_at;
+        player_stop_state = refutation_stop_state refutation;
+        current_dissection;
         turn = Refuter;
       }
     in
-    let choice = commit in
-    let move = ConflictInside {choice; conflict_resolution_step = refutation} in
+    let move =
+      match refutation with
+      | RefuteByConflict conflict_resolution_step ->
+          ConflictInside {choice = commit; conflict_resolution_step}
+      | RefuteByPrematureCommit (input, proof) ->
+          ConflictInside
+            {
+              choice = blocking_section;
+              conflict_resolution_step = Conclude (input, proof);
+            }
+    in
     (game, move)
 
   let resolve_conflict (game : t) (input, proof) =
     assert (conflict_found game) ;
     let player = game.turn in
     let opponent_state_valid =
-      State_hash.equal (PVM.proof_stop_state proof) game.opponent_stop_state
+      Option.equal
+        State_hash.equal
+        (PVM.proof_stop_state proof)
+        game.opponent_stop_state
     in
     let over winner = {winner; reason = ConflictResolved} in
     PVM.verify_proof ~input proof >>= fun player_state_valid ->
@@ -361,14 +387,7 @@ module Make (PVM : Sc_rollup_PVM_sem.S) = struct
     Lwt.return outcome
 
   let apply_choice ~(game : t) ~(choice : Section.section) chosen_stop_state =
-    let section =
-      match game.current_dissection with
-      | Some dissection -> Section.find_section choice dissection
-      | None ->
-          if State_hash.equal choice.section_start_state game.start_state then
-            Some choice
-          else None
-    in
+    let section = Section.find_section choice game.current_dissection in
     let game =
       match section with
       | None -> None
@@ -379,7 +398,8 @@ module Make (PVM : Sc_rollup_PVM_sem.S) = struct
             section_stop_state;
             section_stop_at;
           } ->
-          if State_hash.equal chosen_stop_state section_stop_state then None
+          if Option.equal State_hash.equal chosen_stop_state section_stop_state
+          then None
           else
             Some
               {
@@ -403,7 +423,7 @@ module Make (PVM : Sc_rollup_PVM_sem.S) = struct
       }
     in
     if Section.valid_dissection current_section next_dissection then
-      Lwt.return @@ Some {game with current_dissection = Some next_dissection}
+      Lwt.return @@ Some {game with current_dissection = next_dissection}
     else Lwt.return None
 
   let play game (ConflictInside {choice; conflict_resolution_step}) =

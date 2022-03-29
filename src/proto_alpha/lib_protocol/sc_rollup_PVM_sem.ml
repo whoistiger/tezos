@@ -83,8 +83,9 @@ module type S = sig
   val proof_start_state : proof -> hash
 
   (** [proof_stop_state proof] returns the final state hash of the
-     [proof] execution step. *)
-  val proof_stop_state : proof -> hash
+     [proof] execution step. A return value of [None] means that
+     execution was blocked at the start of the step. *)
+  val proof_stop_state : proof -> hash option
 
   (** [state_hash state] returns a compressed representation of [state]. *)
   val state_hash : state -> hash Lwt.t
@@ -112,6 +113,9 @@ module type S = sig
 
   (** [verify_proof input proof] returns [true] iff the [proof] is valid.
       If the state is an input state, [input] is the hash of the input
-      message externally provided to the evaluation function. *)
+      message externally provided to the evaluation function. If the
+      state is an input state and [input] is [None] then the
+      [proof_stop_state] of the proof should also be [None] (this is the
+      case in which the PVM is blocked). *)
   val verify_proof : input:input option -> proof -> bool Lwt.t
 end
