@@ -277,7 +277,7 @@ module Make (Context : P) :
 
          A stateful deque.
 
-         [[head; end[] is the index range for the elements of the deque.
+         [[head; end]] is the index range for the elements of the deque.
 
          The length of the deque is therefore [end - head].
 

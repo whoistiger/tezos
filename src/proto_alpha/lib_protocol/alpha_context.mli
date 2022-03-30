@@ -2806,6 +2806,10 @@ module Kind : sig
 
   type sc_rollup_publish = Sc_rollup_publish_kind
 
+  type sc_rollup_refute = Sc_rollup_refute_kind
+
+  type sc_rollup_game_move = Sc_rollup_game_move_kind
+
   type 'a manager =
     | Reveal_manager_kind : reveal manager
     | Transaction_manager_kind : transaction manager
@@ -2829,6 +2833,8 @@ module Kind : sig
     | Sc_rollup_add_messages_manager_kind : sc_rollup_add_messages manager
     | Sc_rollup_cement_manager_kind : sc_rollup_cement manager
     | Sc_rollup_publish_manager_kind : sc_rollup_publish manager
+    | Sc_rollup_refute_manager_kind : sc_rollup_refute manager
+    | Sc_rollup_game_move_manager_kind : sc_rollup_game_move manager
 end
 
 type 'a consensus_operation_type =
@@ -3022,6 +3028,17 @@ and _ manager_operation =
       commitment : Sc_rollup.Commitment.t;
     }
       -> Kind.sc_rollup_publish manager_operation
+  | Sc_rollup_refute : {
+      rollup : Sc_rollup.t;
+      commitment : Sc_rollup.Commitment.t;
+      refutation : Sc_rollup.Refutation.t;
+    }
+      -> Kind.sc_rollup_refute manager_operation
+  | Sc_rollup_game_move : {
+      game : Sc_rollup.Game.t;
+      move : Sc_rollup.Game.Move.t;
+    }
+      -> Kind.sc_rollup_game_move manager_operation
 
 and counter = Z.t
 
@@ -3183,6 +3200,10 @@ module Operation : sig
 
     val sc_rollup_publish_case : Kind.sc_rollup_publish Kind.manager case
 
+    val sc_rollup_refute_case : Kind.sc_rollup_refute Kind.manager case
+
+    val sc_rollup_game_move_case : Kind.sc_rollup_game_move Kind.manager case
+
     module Manager_operations : sig
       type 'b case =
         | MCase : {
@@ -3240,6 +3261,10 @@ module Operation : sig
       val sc_rollup_cement_case : Kind.sc_rollup_cement case
 
       val sc_rollup_publish_case : Kind.sc_rollup_publish case
+
+      val sc_rollup_refute_case : Kind.sc_rollup_refute case
+
+      val sc_rollup_game_move_case : Kind.sc_rollup_game_move case
     end
   end
 

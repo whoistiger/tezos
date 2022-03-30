@@ -382,6 +382,7 @@ and _ manager_operation =
   | Sc_rollup_refute : {
       rollup : Sc_rollup_repr.t;
       commitment : Sc_rollup_repr.Commitment_hash.t;
+      refutation : Sc_rollup_repr.Refutation.t;
     }
       -> Kind.sc_rollup_refute manager_operation
   | Sc_rollup_game_move : {
@@ -990,17 +991,20 @@ module Encoding = struct
           tag = sc_rollup_operation_refute_tag;
           name = "sc_rollup_refute";
           encoding =
-            obj2
+            obj3
               (req "rollup" Sc_rollup_repr.encoding)
-              (req "commitment" Sc_rollup_repr.Commitment_hash.encoding);
+              (req "commitment" Sc_rollup_repr.Commitment_hash.encoding)
+              (req "refutation" Sc_rollup_repr.Refutation.encoding);
           select =
             (function
             | Manager (Sc_rollup_refute _ as op) -> Some op | _ -> None);
           proj =
             (function
-            | Sc_rollup_refute {rollup; commitment} -> (rollup, commitment));
+            | Sc_rollup_refute {rollup; commitment; refutation} ->
+                (rollup, commitment, refutation));
           inj =
-            (fun (rollup, commitment) -> Sc_rollup_refute {rollup; commitment});
+            (fun (rollup, commitment, refutation) ->
+              Sc_rollup_refute {rollup; commitment; refutation});
         }
 
     let[@coq_axiom_with_reason "gadt"] sc_rollup_game_move_case =

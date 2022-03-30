@@ -333,3 +333,19 @@ module Kind = struct
   let pp fmt kind =
     match kind with Example_arith -> Format.fprintf fmt "Example_arith"
 end
+
+module Refutation = struct
+  type t = unit
+end
+
+module Game = struct
+  type t = unit
+
+  module Move = struct
+    type t = unit
+  end
+
+  module Outcome = struct
+    type t = unit
+  end
+end

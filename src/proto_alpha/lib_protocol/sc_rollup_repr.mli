@@ -149,3 +149,15 @@ module Kind : sig
 
   val pp : Format.formatter -> t -> unit
 end
+
+module Game : sig
+  type t = unit
+
+  type step = unit
+
+  type move = ConflictInside of {choice : Sc_rollup_tick_repr.t; step : step}
+
+  type refutation = RefuteByConflict of step | RefuteByPrematureCommit of step
+
+  type outcome = LosingStaker of Staker.t
+end
