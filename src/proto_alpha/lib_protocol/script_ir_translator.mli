@@ -404,6 +404,13 @@ val parse_and_unparse_script_unaccounted :
   Script.t ->
   (Script.t * context) tzresult Lwt.t
 
+val unparse_stack_uncarbonated :
+  unparsing_mode:unparsing_mode ->
+  stack_ty:('a, 'b) Script_typed_ir.stack_ty ->
+  context ->
+  'a * 'b ->
+  Script.expr list tzresult Lwt.t
+
 val parse_contract :
   context ->
   Script.location ->

@@ -312,17 +312,17 @@ let[@coq_axiom_with_reason "gadt"] check_comparable :
       let t = serialize_ty_for_error ty in
       error (Comparable_type_expected (loc, t))
 
-let rec unparse_stack_uncarbonated :
+let rec unparse_stack_ty_uncarbonated :
     type a s. (a, s) stack_ty -> Script.expr list = function
   | Bot_t -> []
   | Item_t (ty, rest) ->
       let uty = unparse_ty_uncarbonated ~loc:() ty in
-      let urest = unparse_stack_uncarbonated rest in
+      let urest = unparse_stack_ty_uncarbonated rest in
       strip_locations uty :: urest
 
 let serialize_stack_for_error ctxt stack_ty =
   match Gas.level ctxt with
-  | Unaccounted -> unparse_stack_uncarbonated stack_ty
+  | Unaccounted -> unparse_stack_ty_uncarbonated stack_ty
   | Limited _ -> []
 
 let unparse_unit ~loc ctxt () = ok (Prim (loc, D_Unit, [], []), ctxt)
@@ -2794,8 +2794,8 @@ and[@coq_axiom_with_reason "gadt"] parse_instr :
     | (Some log, (Prim _ | Seq _)) ->
         (* Unparsing for logging is not carbonated as this
               is used only by the client and not the protocol *)
-        let stack_ty_before = unparse_stack_uncarbonated stack_ty in
-        let stack_ty_after = unparse_stack_uncarbonated aft in
+        let stack_ty_before = unparse_stack_ty_uncarbonated stack_ty in
+        let stack_ty_after = unparse_stack_ty_uncarbonated aft in
         log loc ~stack_ty_before ~stack_ty_after
   in
   let typed_no_lwt ctxt loc instr aft =
@@ -5575,6 +5575,24 @@ and[@coq_axiom_with_reason "gadt"] unparse_code ctxt ~stack_depth mode code =
       >>=? fun (items, ctxt) ->
       return (Prim (loc, prim, List.rev items, annot), ctxt)
   | (Int _ | String _ | Bytes _) as atom -> return (atom, ctxt)
+
+let unparse_stack_uncarbonated ~unparsing_mode ~stack_ty ctxt stack =
+  (* We drop the gas limit as this function is only used for debugging/errors.
+     This is okay, since the context isn't returned from the function anyway. *)
+  let ctxt = Gas.set_unlimited ctxt in
+  let rec unparse_stack :
+      type a s.
+      (a, s) Script_typed_ir.stack_ty * (a * s) ->
+      Script.expr list tzresult Lwt.t = function
+    | (Bot_t, (EmptyCell, EmptyCell)) -> return_nil
+    | (Item_t (ty, rest_ty), (v, rest)) ->
+        unparse_data ~stack_depth:0 ctxt unparsing_mode ty v
+        >>=? fun (data, _ctxt) ->
+        unparse_stack (rest_ty, rest) >|=? fun rest ->
+        let data = Micheline.strip_locations data in
+        data :: rest
+  in
+  unparse_stack (stack_ty, stack)
 
 let parse_and_unparse_script_unaccounted ctxt ~legacy ~allow_forged_in_storage
     mode ~normalize_types {code; storage} =

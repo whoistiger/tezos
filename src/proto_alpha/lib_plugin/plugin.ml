@@ -1993,27 +1993,6 @@ module RPC = struct
             * ('a, 's) Script_typed_ir.stack_ty
             -> log_element
 
-      let unparse_stack ctxt (stack, stack_ty) =
-        (* We drop the gas limit as this function is only used for debugging/errors. *)
-        let ctxt = Gas.set_unlimited ctxt in
-        let rec unparse_stack :
-            type a s.
-            (a, s) Script_typed_ir.stack_ty * (a * s) ->
-            Script.expr list tzresult Lwt.t = function
-          | (Bot_t, (EmptyCell, EmptyCell)) -> return_nil
-          | (Item_t (ty, rest_ty), (v, rest)) ->
-              Script_ir_translator.unparse_data
-                ctxt
-                Unparsing_mode.unparsing_mode
-                ty
-                v
-              >>=? fun (data, _ctxt) ->
-              unparse_stack (rest_ty, rest) >|=? fun rest ->
-              let data = Micheline.strip_locations data in
-              data :: rest
-        in
-        unparse_stack (stack_ty, stack)
-
       let trace_logger () : Script_typed_ir.logger =
         let log : log_element list ref = ref [] in
         let log_interp _ ctxt loc sty stack =
@@ -2027,7 +2006,13 @@ module RPC = struct
         let get_log () =
           List.map_es
             (fun (Log (ctxt, loc, stack, stack_ty)) ->
-              trace Cannot_serialize_log (unparse_stack ctxt (stack, stack_ty))
+              trace
+                Cannot_serialize_log
+                (Script_ir_translator.unparse_stack_uncarbonated
+                   ~unparsing_mode:Unparsing_mode.unparsing_mode
+                   ~stack_ty
+                   ctxt
+                   stack)
               >>=? fun stack -> return (loc, Gas.level ctxt, stack))
             !log
           >>=? fun res -> return (Some (List.rev res))
