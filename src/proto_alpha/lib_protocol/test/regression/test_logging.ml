@@ -36,6 +36,13 @@ open Protocol
 open Alpha_context
 open Tezt
 
+type contract = {
+  filename : string;
+  amount : Tez.t;
+  storage : string;
+  parameter : string;
+}
+
 type element_kind = Interp | Entry | Exit
 
 type log_element =
@@ -278,7 +285,7 @@ let logger () :
     log := With_stack (ctxt, instr, loc, stack, sty, Exit) :: !log
   in
   let log_control cont = log := Ctrl cont :: !log in
-  let get_log () = assert false in
+  let get_log () = return_none in
   let assemble_log () =
     let open Environment.Error_monad in
     let+ l =
@@ -302,21 +309,27 @@ let logger () :
   (assemble_log, {log_exit; log_entry; log_interp; get_log; log_control})
 
 let test_context () =
-  let* (b, _cs) = Context.init1 ~consensus_threshold:0 () in
-  let* v = Incremental.begin_construction b in
-  return (Incremental.alpha_ctxt v)
+  let open Environment.Error_monad in
+  let* (b, _contracts) = Context.init1 ~consensus_threshold:0 () in
+  let* inc = Incremental.begin_construction b in
+  let ctxt = Incremental.alpha_ctxt inc in
+  return @@ Alpha_context.Origination_nonce.init ctxt Operation_hash.zero
 
-let first_reg_test () =
+let run_script {filename; amount; storage; parameter} () =
   let (get_log, logger) = logger () in
+  let script =
+    Contract_helpers.read_file @@ Base.(("contracts" // filename) ^ ".tz")
+  in
   let* ctxt = test_context () in
-  let script = Contract_helpers.read_file "contracts/add_to_store.tz" in
+  let step_constants = Contract_helpers.{default_step_constants with amount} in
   let* (_res, _ctxt) =
     Contract_helpers.run_script
       ctxt
       script
       ~logger
-      ~storage:"5"
-      ~parameter:"3"
+      ~storage
+      ~parameter
+      ~step_constants
       ()
   in
   let* log = get_log () in
@@ -334,10 +347,22 @@ let fail_on_error f () =
   | Ok () -> return ()
   | Error e -> Test.fail "%a" Error_monad.pp_print_trace e
 
-let register () =
+let register_script contract =
   Regression.register
     ~__FILE__
-    ~title:"first_regression_test"
-    ~tags:["protocol"; "regression"]
-    ~output_file:"test_logging"
-    (fail_on_error first_reg_test)
+    ~title:contract.filename
+    ~tags:["protocol"; "regression"; "logging"]
+    ~output_file:(Filename.remove_extension contract.filename)
+    (fail_on_error @@ run_script contract)
+
+let register () =
+  Array.iter
+    register_script
+    [|
+      {
+        filename = "add_to_store";
+        amount = Tez.zero;
+        storage = "5";
+        parameter = "3";
+      };
+    |]
