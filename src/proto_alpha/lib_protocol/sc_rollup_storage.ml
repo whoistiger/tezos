@@ -42,8 +42,17 @@ type error +=
       Sc_rollup_repr.Commitment_hash.t
   | (* `Temporary *) Sc_rollup_bad_inbox_level
   | (* `Temporary *) Sc_rollup_max_number_of_available_messages_reached
+  | Not_implemented
 
 let () =
+  register_error_kind
+    `Temporary
+    ~id:"Not implemented"
+    ~title:"Not implemented"
+    ~description:"Not implemented"
+    Data_encoding.unit
+    (function Not_implemented -> Some () | _ -> None)
+    (fun () -> Not_implemented) ;
   register_error_kind
     `Temporary
     ~id:"Sc_rollup_max_number_of_available_messages_reached"
@@ -733,3 +742,7 @@ let initial_level ctxt rollup =
   match level with
   | None -> fail (Sc_rollup_does_not_exist rollup)
   | Some level -> return level
+
+let init_game _ctxt _rollup _refuter _opponent = fail Not_implemented
+
+let progress_game _ctxt _game _refutation = fail Not_implemented

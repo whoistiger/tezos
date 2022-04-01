@@ -150,14 +150,40 @@ module Kind : sig
   val pp : Format.formatter -> t -> unit
 end
 
-module Game : sig
+module Proof : sig
   type t = unit
 
-  type step = unit
+  val encoding : t Data_encoding.t
 
-  type move = ConflictInside of {choice : Sc_rollup_tick_repr.t; step : step}
+  val pp : Format.formatter -> t -> unit
+end
 
-  type refutation = RefuteByConflict of step | RefuteByPrematureCommit of step
+module Game : sig
+  type t = {
+    stakers : Staker.t * Staker.t;
+    start_state : State_hash.t;
+    start_tick : Sc_rollup_tick_repr.t;
+    stop_states : State_hash.t * State_hash.t;
+    stop_ticks : Sc_rollup_tick_repr.t * Sc_rollup_tick_repr.t;
+    current_dissection : (State_hash.t * Sc_rollup_tick_repr.t) list;
+    turn : bool;
+  }
 
-  type outcome = LosingStaker of Staker.t
+  (*  val encoding : t Data_encoding.t *)
+
+  val pp : Format.formatter -> t -> unit
+
+  type step =
+    | Dissection of (State_hash.t * Sc_rollup_tick_repr.t) list
+    | Proof of Proof.t
+
+  type refutation = {choice : Sc_rollup_tick_repr.t; step : step}
+
+  val refutation_encoding : refutation Data_encoding.t
+
+  type outcome =
+    | SlashStaker of Staker.t
+    | SlashBothStakers of Staker.t * Staker.t
+
+  val outcome_encoding : outcome Data_encoding.t
 end

@@ -2573,6 +2573,34 @@ module Sc_rollup : sig
       MerkelizedOperations with type tree = Tree.tree
   end
 
+  module Proof : sig
+    type t = unit
+  end
+
+  module Game : sig
+    type t = {
+      stakers : Staker.t * Staker.t;
+      start_state : State_hash.t;
+      start_tick : Sc_rollup_tick_repr.t;
+      stop_states : State_hash.t * State_hash.t;
+      stop_ticks : Sc_rollup_tick_repr.t * Sc_rollup_tick_repr.t;
+      current_dissection : (State_hash.t * Sc_rollup_tick_repr.t) list;
+      turn : bool;
+    }
+
+    type step =
+      | Dissection of (State_hash.t * Sc_rollup_tick_repr.t) list
+      | Proof of Proof.t
+
+    type refutation = {choice : Sc_rollup_tick_repr.t; step : step}
+
+    type outcome =
+      | SlashStaker of Staker.t
+      | SlashBothStakers of Staker.t * Staker.t
+
+    val outcome_encoding : outcome Data_encoding.t
+  end
+
   val rpc_arg : t RPC_arg.t
 
   val add_messages :
@@ -2808,7 +2836,7 @@ module Kind : sig
 
   type sc_rollup_refute = Sc_rollup_refute_kind
 
-  type sc_rollup_game_move = Sc_rollup_game_move_kind
+  type sc_rollup_timeout = Sc_rollup_timeout_kind
 
   type 'a manager =
     | Reveal_manager_kind : reveal manager
@@ -2834,7 +2862,7 @@ module Kind : sig
     | Sc_rollup_cement_manager_kind : sc_rollup_cement manager
     | Sc_rollup_publish_manager_kind : sc_rollup_publish manager
     | Sc_rollup_refute_manager_kind : sc_rollup_refute manager
-    | Sc_rollup_game_move_manager_kind : sc_rollup_game_move manager
+    | Sc_rollup_timeout_manager_kind : sc_rollup_timeout manager
 end
 
 type 'a consensus_operation_type =
@@ -3030,15 +3058,15 @@ and _ manager_operation =
       -> Kind.sc_rollup_publish manager_operation
   | Sc_rollup_refute : {
       rollup : Sc_rollup.t;
-      commitment : Sc_rollup.Commitment.t;
-      refutation : Sc_rollup.Refutation.t;
+      opponent : Sc_rollup.Staker.t;
+      refutation : Sc_rollup.Game.refutation;
     }
       -> Kind.sc_rollup_refute manager_operation
-  | Sc_rollup_game_move : {
-      game : Sc_rollup.Game.t;
-      move : Sc_rollup.Game.Move.t;
+  | Sc_rollup_timeout : {
+      rollup : Sc_rollup.t;
+      staker : Sc_rollup.Staker.t;
     }
-      -> Kind.sc_rollup_game_move manager_operation
+      -> Kind.sc_rollup_timeout manager_operation
 
 and counter = Z.t
 
@@ -3202,7 +3230,7 @@ module Operation : sig
 
     val sc_rollup_refute_case : Kind.sc_rollup_refute Kind.manager case
 
-    val sc_rollup_game_move_case : Kind.sc_rollup_game_move Kind.manager case
+    val sc_rollup_timeout_case : Kind.sc_rollup_timeout Kind.manager case
 
     module Manager_operations : sig
       type 'b case =
@@ -3264,7 +3292,7 @@ module Operation : sig
 
       val sc_rollup_refute_case : Kind.sc_rollup_refute case
 
-      val sc_rollup_game_move_case : Kind.sc_rollup_game_move case
+      val sc_rollup_timeout_case : Kind.sc_rollup_timeout case
     end
   end
 

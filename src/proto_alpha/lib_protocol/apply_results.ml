@@ -215,6 +215,16 @@ type _ successful_manager_operation_result =
       staked_hash : Sc_rollup.Commitment_hash.t;
     }
       -> Kind.sc_rollup_publish successful_manager_operation_result
+  | Sc_rollup_refute_result : {
+      consumed_gas : Gas.Arith.fp;
+      outcome : Sc_rollup.Game.outcome option;
+    }
+      -> Kind.sc_rollup_refute successful_manager_operation_result
+  | Sc_rollup_timeout_result : {
+      consumed_gas : Gas.Arith.fp;
+      outcome : Sc_rollup.Game.outcome;
+    }
+      -> Kind.sc_rollup_timeout successful_manager_operation_result
 
 let migration_origination_result_to_successful_manager_operation_result
     ({
@@ -937,6 +947,46 @@ module Manager_result = struct
       ~inj:(fun (consumed_gas, consumed_milligas, staked_hash) ->
         assert (Gas.Arith.(equal (ceil consumed_milligas) consumed_gas)) ;
         Sc_rollup_publish_result {consumed_gas = consumed_milligas; staked_hash})
+
+  let sc_rollup_refute_case =
+    make
+      ~op_case:Operation.Encoding.Manager_operations.sc_rollup_refute_case
+      ~encoding:
+        Data_encoding.(
+          obj3
+            (req "consumed_gas" Gas.Arith.n_integral_encoding)
+            (dft "consumed_milligas" Gas.Arith.n_fp_encoding Gas.Arith.zero)
+            (req "outcome" (option Sc_rollup.Game.outcome_encoding)))
+      ~select:(function
+        | Successful_manager_result (Sc_rollup_refute_result _ as op) -> Some op
+        | _ -> None)
+      ~proj:(function
+        | Sc_rollup_refute_result {consumed_gas; outcome} ->
+            (Gas.Arith.ceil consumed_gas, consumed_gas, outcome))
+      ~kind:Kind.Sc_rollup_refute_manager_kind
+      ~inj:(fun (consumed_gas, consumed_milligas, outcome) ->
+        assert (Gas.Arith.(equal (ceil consumed_milligas) consumed_gas)) ;
+        Sc_rollup_refute_result {consumed_gas = consumed_milligas; outcome})
+
+  let sc_rollup_timeout_case =
+    make
+      ~op_case:Operation.Encoding.Manager_operations.sc_rollup_timeout_case
+      ~encoding:
+        (obj3
+           (req "consumed_gas" Gas.Arith.n_integral_encoding)
+           (dft "consumed_milligas" Gas.Arith.n_fp_encoding Gas.Arith.zero)
+           (req "outcome" Sc_rollup.Game.outcome_encoding))
+      ~select:(function
+        | Successful_manager_result (Sc_rollup_timeout_result _ as op) ->
+            Some op
+        | _ -> None)
+      ~proj:(function
+        | Sc_rollup_timeout_result {consumed_gas; outcome} ->
+            (Gas.Arith.ceil consumed_gas, consumed_gas, outcome))
+      ~kind:Kind.Sc_rollup_timeout_manager_kind
+      ~inj:(fun (consumed_gas, consumed_milligas, outcome) ->
+        assert (Gas.Arith.(equal (ceil consumed_milligas) consumed_gas)) ;
+        Sc_rollup_timeout_result {consumed_gas = consumed_milligas; outcome})
 end
 
 type 'kind iselect =
@@ -1259,6 +1309,13 @@ let equal_manager_kind :
     ->
       Some Eq
   | (Kind.Sc_rollup_publish_manager_kind, _) -> None
+  | (Kind.Sc_rollup_refute_manager_kind, Kind.Sc_rollup_refute_manager_kind) ->
+      Some Eq
+  | (Kind.Sc_rollup_refute_manager_kind, _) -> None
+  | (Kind.Sc_rollup_timeout_manager_kind, Kind.Sc_rollup_timeout_manager_kind)
+    ->
+      Some Eq
+  | (Kind.Sc_rollup_timeout_manager_kind, _) -> None
 
 module Encoding = struct
   type 'kind case =
@@ -1755,6 +1812,28 @@ module Encoding = struct
           ->
             Some (op, res)
         | _ -> None)
+
+  let[@coq_axiom_with_reason "gadt"] sc_rollup_refute_case =
+    make_manager_case
+      Operation.Encoding.sc_rollup_refute_case
+      Manager_result.sc_rollup_refute_case
+      (function
+        | Contents_and_result
+            ((Manager_operation {operation = Sc_rollup_refute _; _} as op), res)
+          ->
+            Some (op, res)
+        | _ -> None)
+
+  let[@coq_axiom_with_reason "gadt"] sc_rollup_timeout_case =
+    make_manager_case
+      Operation.Encoding.sc_rollup_timeout_case
+      Manager_result.sc_rollup_timeout_case
+      (function
+        | Contents_and_result
+            ((Manager_operation {operation = Sc_rollup_timeout _; _} as op), res)
+          ->
+            Some (op, res)
+        | _ -> None)
 end
 
 let contents_result_encoding =
@@ -1804,6 +1883,8 @@ let contents_result_encoding =
          make sc_rollup_add_messages_case;
          make sc_rollup_cement_case;
          make sc_rollup_publish_case;
+         make sc_rollup_refute_case;
+         make sc_rollup_timeout_case;
        ]
 
 let contents_and_result_encoding =
@@ -1858,6 +1939,8 @@ let contents_and_result_encoding =
          make sc_rollup_add_messages_case;
          make sc_rollup_cement_case;
          make sc_rollup_publish_case;
+         make sc_rollup_refute_case;
+         make sc_rollup_timeout_case;
        ]
 
 type 'kind contents_result_list =
@@ -2486,6 +2569,56 @@ let kind_equal :
         } ) ->
       Some Eq
   | (Manager_operation {operation = Sc_rollup_publish _; _}, _) -> None
+  | ( Manager_operation {operation = Sc_rollup_refute _; _},
+      Manager_operation_result
+        {operation_result = Applied (Sc_rollup_refute_result _); _} ) ->
+      Some Eq
+  | ( Manager_operation {operation = Sc_rollup_refute _; _},
+      Manager_operation_result
+        {operation_result = Backtracked (Sc_rollup_refute_result _, _); _} ) ->
+      Some Eq
+  | ( Manager_operation {operation = Sc_rollup_refute _; _},
+      Manager_operation_result
+        {
+          operation_result =
+            Failed (Alpha_context.Kind.Sc_rollup_refute_manager_kind, _);
+          _;
+        } ) ->
+      Some Eq
+  | ( Manager_operation {operation = Sc_rollup_refute _; _},
+      Manager_operation_result
+        {
+          operation_result =
+            Skipped Alpha_context.Kind.Sc_rollup_refute_manager_kind;
+          _;
+        } ) ->
+      Some Eq
+  | (Manager_operation {operation = Sc_rollup_refute _; _}, _) -> None
+  | ( Manager_operation {operation = Sc_rollup_timeout _; _},
+      Manager_operation_result
+        {operation_result = Applied (Sc_rollup_timeout_result _); _} ) ->
+      Some Eq
+  | ( Manager_operation {operation = Sc_rollup_timeout _; _},
+      Manager_operation_result
+        {operation_result = Backtracked (Sc_rollup_timeout_result _, _); _} ) ->
+      Some Eq
+  | ( Manager_operation {operation = Sc_rollup_timeout _; _},
+      Manager_operation_result
+        {
+          operation_result =
+            Failed (Alpha_context.Kind.Sc_rollup_timeout_manager_kind, _);
+          _;
+        } ) ->
+      Some Eq
+  | ( Manager_operation {operation = Sc_rollup_timeout _; _},
+      Manager_operation_result
+        {
+          operation_result =
+            Skipped Alpha_context.Kind.Sc_rollup_timeout_manager_kind;
+          _;
+        } ) ->
+      Some Eq
+  | (Manager_operation {operation = Sc_rollup_timeout _; _}, _) -> None
 
 let rec kind_equal_list :
     type kind kind2.

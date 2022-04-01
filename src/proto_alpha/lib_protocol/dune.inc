@@ -57,9 +57,9 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    cycle_repr.mli cycle_repr.ml
    level_repr.mli level_repr.ml
    sc_rollup_tick_repr.mli sc_rollup_tick_repr.ml
+   sc_rollup_repr.mli sc_rollup_repr.ml
    skip_list_repr.mli skip_list_repr.ml
    sc_rollup_inbox_repr.mli sc_rollup_inbox_repr.ml
-   sc_rollup_repr.mli sc_rollup_repr.ml
    seed_repr.mli seed_repr.ml
    sampler.mli sampler.ml
    voting_period_repr.mli voting_period_repr.ml
@@ -244,9 +244,9 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    cycle_repr.mli cycle_repr.ml
    level_repr.mli level_repr.ml
    sc_rollup_tick_repr.mli sc_rollup_tick_repr.ml
+   sc_rollup_repr.mli sc_rollup_repr.ml
    skip_list_repr.mli skip_list_repr.ml
    sc_rollup_inbox_repr.mli sc_rollup_inbox_repr.ml
-   sc_rollup_repr.mli sc_rollup_repr.ml
    seed_repr.mli seed_repr.ml
    sampler.mli sampler.ml
    voting_period_repr.mli voting_period_repr.ml
@@ -431,9 +431,9 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    cycle_repr.mli cycle_repr.ml
    level_repr.mli level_repr.ml
    sc_rollup_tick_repr.mli sc_rollup_tick_repr.ml
+   sc_rollup_repr.mli sc_rollup_repr.ml
    skip_list_repr.mli skip_list_repr.ml
    sc_rollup_inbox_repr.mli sc_rollup_inbox_repr.ml
-   sc_rollup_repr.mli sc_rollup_repr.ml
    seed_repr.mli seed_repr.ml
    sampler.mli sampler.ml
    voting_period_repr.mli voting_period_repr.ml
@@ -640,9 +640,9 @@ include Tezos_raw_protocol_alpha.Main
    Cycle_repr
    Level_repr
    Sc_rollup_tick_repr
+   Sc_rollup_repr
    Skip_list_repr
    Sc_rollup_inbox_repr
-   Sc_rollup_repr
    Seed_repr
    Sampler
    Voting_period_repr
@@ -868,9 +868,9 @@ include Tezos_raw_protocol_alpha.Main
    cycle_repr.mli cycle_repr.ml
    level_repr.mli level_repr.ml
    sc_rollup_tick_repr.mli sc_rollup_tick_repr.ml
+   sc_rollup_repr.mli sc_rollup_repr.ml
    skip_list_repr.mli skip_list_repr.ml
    sc_rollup_inbox_repr.mli sc_rollup_inbox_repr.ml
-   sc_rollup_repr.mli sc_rollup_repr.ml
    seed_repr.mli seed_repr.ml
    sampler.mli sampler.ml
    voting_period_repr.mli voting_period_repr.ml

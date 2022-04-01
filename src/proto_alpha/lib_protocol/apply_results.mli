@@ -271,6 +271,16 @@ and _ successful_manager_operation_result =
       staked_hash : Sc_rollup.Commitment_hash.t;
     }
       -> Kind.sc_rollup_publish successful_manager_operation_result
+  | Sc_rollup_refute_result : {
+      consumed_gas : Gas.Arith.fp;
+      outcome : Sc_rollup.Game.outcome option;
+    }
+      -> Kind.sc_rollup_refute successful_manager_operation_result
+  | Sc_rollup_timeout_result : {
+      consumed_gas : Gas.Arith.fp;
+      outcome : Sc_rollup.Game.outcome;
+    }
+      -> Kind.sc_rollup_timeout successful_manager_operation_result
 
 and packed_successful_manager_operation_result =
   | Successful_manager_result :

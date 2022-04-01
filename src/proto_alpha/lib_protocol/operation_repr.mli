@@ -128,7 +128,7 @@ module Kind : sig
 
   type sc_rollup_refute = Sc_rollup_refute_kind
 
-  type sc_rollup_game_move = Sc_rollup_game_move_kind
+  type sc_rollup_timeout = Sc_rollup_timeout_kind
 
   type 'a manager =
     | Reveal_manager_kind : reveal manager
@@ -154,7 +154,7 @@ module Kind : sig
     | Sc_rollup_cement_manager_kind : sc_rollup_cement manager
     | Sc_rollup_publish_manager_kind : sc_rollup_publish manager
     | Sc_rollup_refute_manager_kind : sc_rollup_refute manager
-    | Sc_rollup_game_move_manager_kind : sc_rollup_game_move manager
+    | Sc_rollup_timeout_manager_kind : sc_rollup_timeout manager
 end
 
 type 'a consensus_operation_type =
@@ -450,15 +450,15 @@ and _ manager_operation =
       -> Kind.sc_rollup_publish manager_operation
   | Sc_rollup_refute : {
       rollup : Sc_rollup_repr.t;
-      commitment : Sc_rollup_repr.Commitment_hash.t;
-      refutation : Sc_rollup_repr.Refutation.t;
+      opponent : Sc_rollup_repr.Staker.t;
+      refutation : Sc_rollup_repr.Game.refutation;
     }
       -> Kind.sc_rollup_refute manager_operation
-  | Sc_rollup_game_move : {
-      game : Sc_rollup_repr.Game.t;
-      move : Sc_rollup_repr.Game.Move.t;
+  | Sc_rollup_timeout : {
+      rollup : Sc_rollup_repr.t;
+      staker : Sc_rollup_repr.Staker.t;
     }
-      -> Kind.sc_rollup_game_move manager_operation
+      -> Kind.sc_rollup_timeout manager_operation
 
 (** Counters are used as anti-replay protection mechanism in
     manager operations: each manager account stores a counter and
@@ -602,7 +602,7 @@ module Encoding : sig
 
   val sc_rollup_refute_case : Kind.sc_rollup_refute Kind.manager case
 
-  val sc_rollup_game_move_case : Kind.sc_rollup_game_move Kind.manager case
+  val sc_rollup_timeout_case : Kind.sc_rollup_timeout Kind.manager case
 
   module Manager_operations : sig
     type 'b case =
@@ -663,6 +663,6 @@ module Encoding : sig
 
     val sc_rollup_refute_case : Kind.sc_rollup_refute case
 
-    val sc_rollup_game_move_case : Kind.sc_rollup_game_move case
+    val sc_rollup_timeout_case : Kind.sc_rollup_timeout case
   end
 end

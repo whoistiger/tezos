@@ -404,11 +404,11 @@ val initial_level :
 
 (** XXX Write docstring.
   *)
-val refute_commitment :
+val init_game :
   Raw_context.t ->
   Sc_rollup_repr.t ->
   Sc_rollup_repr.Staker.t ->
-  Sc_rollup_repr.Commitment_hash.t ->
+  Sc_rollup_repr.Staker.t ->
   (Sc_rollup_repr.Game.t * Raw_context.t) tzresult Lwt.t
 
 (** XXX Write docstring.
@@ -416,6 +416,5 @@ val refute_commitment :
 val progress_game :
   Raw_context.t ->
   Sc_rollup_repr.Game.t ->
-  Sc_rollup_repr.Game.Move.t ->
-  Sc_rollup_repr.Staker.t ->
-  (Sc_rollup_repr.Game.Outcome.t option * Raw_context.t) tzresult Lwt.t
+  Sc_rollup_repr.Game.refutation ->
+  (Sc_rollup_repr.Game.outcome option * Raw_context.t) tzresult Lwt.t

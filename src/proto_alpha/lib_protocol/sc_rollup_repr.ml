@@ -334,18 +334,81 @@ module Kind = struct
     match kind with Example_arith -> Format.fprintf fmt "Example_arith"
 end
 
-module Refutation = struct
+module Proof = struct
   type t = unit
+
+  let encoding = Data_encoding.unit
+
+  let pp _ _ = ()
 end
 
 module Game = struct
-  type t = unit
+  type t = {
+    stakers : Staker.t * Staker.t;
+    start_state : State_hash.t;
+    start_tick : Sc_rollup_tick_repr.t;
+    stop_states : State_hash.t * State_hash.t;
+    stop_ticks : Sc_rollup_tick_repr.t * Sc_rollup_tick_repr.t;
+    current_dissection : (State_hash.t * Sc_rollup_tick_repr.t) list;
+    turn : bool;
+  }
 
-  module Move = struct
-    type t = unit
-  end
+  let pp _ _ = ()
 
-  module Outcome = struct
-    type t = unit
-  end
+  type step =
+    | Dissection of (State_hash.t * Sc_rollup_tick_repr.t) list
+    | Proof of Proof.t
+
+  let step_encoding =
+    let open Data_encoding in
+    union
+      ~tag_size:`Uint8
+      [
+        case
+          ~title:"Dissection"
+          (Tag 0)
+          (list (tup2 State_hash.encoding Sc_rollup_tick_repr.encoding))
+          (function Dissection d -> Some d | _ -> None)
+          (fun d -> Dissection d);
+        case
+          ~title:"Proof"
+          (Tag 1)
+          Proof.encoding
+          (function Proof p -> Some p | _ -> None)
+          (fun p -> Proof p);
+      ]
+
+  type refutation = {choice : Sc_rollup_tick_repr.t; step : step}
+
+  let refutation_encoding =
+    let open Data_encoding in
+    conv
+      (fun {choice; step} -> (choice, step))
+      (fun (choice, step) -> {choice; step})
+      (obj2
+         (req "choice" Sc_rollup_tick_repr.encoding)
+         (req "step" step_encoding))
+
+  type outcome =
+    | SlashStaker of Staker.t
+    | SlashBothStakers of Staker.t * Staker.t
+
+  let outcome_encoding =
+    let open Data_encoding in
+    union
+      ~tag_size:`Uint8
+      [
+        case
+          ~title:"SlashStaker"
+          (Tag 0)
+          Staker.encoding
+          (function SlashStaker s -> Some s | _ -> None)
+          (fun s -> SlashStaker s);
+        case
+          ~title:"SlashBothStakers"
+          (Tag 1)
+          (tup2 Staker.encoding Staker.encoding)
+          (function SlashBothStakers (s, t) -> Some (s, t) | _ -> None)
+          (fun (s, t) -> SlashBothStakers (s, t));
+      ]
 end
