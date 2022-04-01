@@ -49,25 +49,28 @@ type options = {
   point_size : float;
   qt_target_pixel_size : (int * int) option;
   pdf_target_cm_size : (float * float) option;
+  quantiles : float list option;
 }
 
 let options_encoding =
   let open Data_encoding in
   conv
-    (fun {point_size; qt_target_pixel_size; pdf_target_cm_size} ->
-      (point_size, qt_target_pixel_size, pdf_target_cm_size))
-    (fun (point_size, qt_target_pixel_size, pdf_target_cm_size) ->
-      {point_size; qt_target_pixel_size; pdf_target_cm_size})
-    (obj3
+    (fun {point_size; qt_target_pixel_size; pdf_target_cm_size; quantiles} ->
+      (point_size, qt_target_pixel_size, pdf_target_cm_size, quantiles))
+    (fun (point_size, qt_target_pixel_size, pdf_target_cm_size, quantiles) ->
+      {point_size; qt_target_pixel_size; pdf_target_cm_size; quantiles})
+    (obj4
        (req "point_size" float)
        (opt "qt_target_pixel_size" (tup2 int31 int31))
-       (opt "pdf_target_cm_size" (tup2 float float)))
+       (opt "pdf_target_cm_size" (tup2 float float))
+       (opt "quantiles" (list float)))
 
 let default_options =
   {
     point_size = 0.5;
     qt_target_pixel_size = Some (1920, 1080);
     pdf_target_cm_size = None;
+    quantiles = None;
   }
 
 let opts = ref default_options
@@ -82,41 +85,60 @@ let pdf_cm_size () = !opts.pdf_target_cm_size
    (corresponding to time measurement of events) together with the
    corresponding measured execution time. Hence, if [n] is the length
    of the workload, there are [n+1] columns. *)
-type raw_row = {workload : (string * float) list; qty : float}
+type raw_row = {workload : (string * float) list; by_quantiles : float array}
 
 (* Gnuplot interprets by default underscores as subscript symbols *)
 let underscore_to_dash = String.map (fun c -> if c = '_' then '-' else c)
 
-let convert_workload_data :
-    (Sparse_vec.String.t * float array) list -> raw_row list =
- fun workload_data ->
+let convert_workload_data quantiles workload_data =
   List.map
-    (fun (vec, qty) ->
-      let a = Stats.Emp.quantile (module Float) qty 0.5 in
-      {workload = Sparse_vec.String.to_list vec; qty = a})
+    (fun (vec, data) ->
+      let by_quantiles =
+        Array.map (fun q -> Stats.Emp.quantile (module Float) data q) quantiles
+      in
+      {workload = Sparse_vec.String.to_list vec; by_quantiles})
     workload_data
 
-let style i =
+(* Let's have consistent styles for different kind of plots *)
+type style =
+  | Empirical_median_style
+  | Empirical_quantile_style
+  | Predicted_style
+
+let ems = Empirical_median_style
+
+let eqs = Empirical_quantile_style
+
+let ps = Predicted_style
+
+let style =
   let open Style in
-  match i with
-  | 0 ->
+  function
+  | Empirical_median_style ->
       default |> set_color Color.blue
-      |> set_point ~ptyp:Pointtype.disk ~psize:(point_size ())
-  | 1 ->
+      |> set_point ~ptyp:Pointtype.box ~psize:(point_size ())
+  | Empirical_quantile_style ->
+      default
+      |> set_color (Color.rgb 0.0 0.5 0.0)
+      |> set_point ~ptyp:Pointtype.delta_solid ~psize:(point_size ())
+  | Predicted_style ->
       default |> set_color Color.red
       |> set_point ~ptyp:Pointtype.box ~psize:(point_size ())
-  | 2 ->
-      default |> set_color Color.green
-      |> set_point ~ptyp:Pointtype.delta_solid ~psize:(point_size ())
-  | _ -> Stdlib.failwith "Display.style: style overflow"
 
 let scatterplot_2d title (xaxis, input) outputs =
   let plots =
-    List.mapi
-      (fun i output ->
-        let style = style i in
-        let points = Data.of_array @@ Array.map2 Plot.r2 input output in
-        Scatter.points_2d ~points ~style ())
+    List.map
+      (fun (legend, sty, output) ->
+        let style = style sty in
+        match sty with
+        | Empirical_median_style ->
+            let combined = Array.map2 (fun x y -> (x, y)) input output in
+            Array.sort (fun (x, _) (y, _) -> Float.compare x y) combined ;
+            let points = Data.of_array @@ Array.map Plot.tup_r2 combined in
+            Line.line_2d ~points ~style ~legend ()
+        | Empirical_quantile_style | Predicted_style ->
+            let points = Data.of_array @@ Array.map2 Plot.r2 input output in
+            Scatter.points_2d ~points ~style ~legend ())
       outputs
   in
   let xaxis = underscore_to_dash xaxis in
@@ -131,14 +153,14 @@ let rec map3 f l1 l2 l3 () =
 
 let scatterplot_3d title (xaxis, input_x) (yaxis, input_y) outputs =
   let plots =
-    List.mapi
-      (fun i output ->
-        let style = style i in
+    List.map
+      (fun (legend, sty, output) ->
+        let style = style sty in
         let xs = Array.to_seq input_x in
         let ys = Array.to_seq input_y in
         let zs = Array.to_seq output in
         let points = map3 Plot.r3 xs ys zs |> Data.of_seq in
-        Scatter.points_3d ~points ~style ())
+        Scatter.points_3d ~points ~style ~legend ())
       outputs
   in
   let xaxis = underscore_to_dash xaxis in
@@ -168,7 +190,9 @@ let plot_scatter title input_columns outputs =
         List.map
           (function
             | [((dim1, _) as col1); ((dim2, _) as col2)] ->
-                let title = Format.asprintf "%s\n(%s, %s)" title dim1 dim2 in
+                let dim1 = underscore_to_dash dim1 in
+                let dim2 = underscore_to_dash dim2 in
+                let title = Format.asprintf "%s (%s, %s)" title dim1 dim2 in
                 scatterplot_3d title col1 col2 outputs
             | _ -> assert false)
           subsets
@@ -182,8 +206,9 @@ let plot_scatter title input_columns outputs =
    together with timings:
      [| 2879 ; 768 |] *)
 
-let empirical_data (workload_data : (Sparse_vec.String.t * float array) list) =
-  let samples = convert_workload_data workload_data in
+let empirical_data quantiles
+    (workload_data : (Sparse_vec.String.t * float array) list) =
+  let samples = convert_workload_data quantiles workload_data in
   (* Extract name of variables and check well-formedness *)
   let variables =
     List.rev_map (fun {workload; _} -> List.rev_map fst workload) samples
@@ -193,19 +218,19 @@ let empirical_data (workload_data : (Sparse_vec.String.t * float array) list) =
   | [] | _ :: _ :: _ ->
       Format.kasprintf
         Result.error
-        "Display.empirical_data: variables not named consistenly@."
+        "Display.empirical_data: variables not named consistently@."
   | [vars] ->
       let rows = List.length samples in
       let input_dims = List.length vars in
       let columns = Array.init input_dims (fun _ -> Array.make rows 0.0) in
-      let timings = Array.make rows 0.0 in
+      let timings = Array.make_matrix (Array.length quantiles) rows 0.0 in
       List.iteri
-        (fun i {workload; qty} ->
+        (fun i {workload; by_quantiles} ->
           assert (Compare.List_length_with.(workload = input_dims)) ;
           List.iteri
             (fun input_dim (_, size) -> columns.(input_dim).(i) <- size)
             workload ;
-          timings.(i) <- qty)
+          Array.iteri (fun j q -> timings.(j).(i) <- q) by_quantiles)
         samples ;
       let columns = Array.to_list columns in
       let named_columns =
@@ -269,14 +294,29 @@ let validator (problem : Inference.problem) (solution : Inference.solution) =
       let timings = vector_to_array median_timing in
       let predicted = vector_to_array (Maths.Matrix.col predicted 0) in
       let* plots =
-        plot_scatter "Validation (chosen basis)" columns [timings; predicted]
+        plot_scatter
+          "Validation (chosen basis)"
+          columns
+          [("empirical", ems, timings); ("predicted", ps, predicted)]
       in
       return (List.length plots, plots)
 
-let empirical (workload_data : (Sparse_vec.String.t * float array) list) =
+let prepare_quantiles_data quantiles data =
+  Array.to_list
+  @@ Array.map2
+       (fun q col ->
+         let legend = Format.asprintf "q=%f" q in
+         let sty = if q = 0.5 then ems else eqs in
+         (legend, sty, col))
+       quantiles
+       data
+
+let empirical quantiles
+    (workload_data : (Sparse_vec.String.t * float array) list) =
   let open Result_syntax in
-  let* (columns, timings) = empirical_data workload_data in
-  let* plots = plot_scatter "Empirical" columns [timings] in
+  let* (columns, timings) = empirical_data quantiles workload_data in
+  let timings_quantiles = prepare_quantiles_data quantiles timings in
+  let* plots = plot_scatter "Empirical" columns timings_quantiles in
   let nrows = List.length plots in
   return (nrows, plots)
 
@@ -290,7 +330,7 @@ let eval_mset (mset : Free_variable.Sparse_vec.t)
 let eval_affine (aff : Costlang.affine) (eval : Free_variable.t -> float) =
   eval_mset aff.linear_comb eval +. aff.const
 
-let validator_empirical workload_data (problem : Inference.problem)
+let validator_empirical quantiles workload_data (problem : Inference.problem)
     (solution : Inference.solution) =
   let open Result_syntax in
   let {Inference.mapping; _} = solution in
@@ -311,8 +351,14 @@ let validator_empirical workload_data (problem : Inference.problem)
         in
         Array.of_list predicted_list
   in
-  let* (columns, timings) = empirical_data workload_data in
-  let* plots = plot_scatter "Validation (raw)" columns [timings; predicted] in
+  let* (columns, timings) = empirical_data quantiles workload_data in
+  let timings_quantiles = prepare_quantiles_data quantiles timings in
+  let* plots =
+    plot_scatter
+      "Validation (raw)"
+      columns
+      (timings_quantiles @ [("predicted", ps, predicted)])
+  in
   let nrows = List.length plots in
   return (nrows, plots)
 
@@ -334,10 +380,14 @@ let perform_plot ~measure ~model_name ~problem ~solution ~plot_target ~options =
         (Bench.workload_to_vector workload, Maths.vector_to_array measures))
       measurement.workload_data
   in
-  let* (rows1, empirical_plots) = empirical workload_data in
+  let quantiles =
+    (* median by default *)
+    match options.quantiles with None -> [|0.5|] | Some qs -> Array.of_list qs
+  in
+  let* (rows1, empirical_plots) = empirical quantiles workload_data in
   let* (rows2, validator_plots) = validator problem solution in
   let* (rows3, validator_emp_plots) =
-    validator_empirical workload_data problem solution
+    validator_empirical quantiles workload_data problem solution
   in
   let rows = max rows1 (max rows2 rows3) in
   let plot_matrix = Array.make_matrix rows 3 None in
