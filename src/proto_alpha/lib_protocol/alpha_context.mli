@@ -2647,6 +2647,24 @@ module Sc_rollup : sig
 
   val initial_level : context -> t -> Raw_level.t tzresult Lwt.t
 
+  val get_or_init_game :
+    context -> t -> Staker.t * Staker.t -> (Game.t * context) tzresult Lwt.t
+
+  val update_game :
+    context ->
+    t ->
+    Staker.t * Staker.t ->
+    (Game.t -> 'a * Game.t) ->
+    ('a * context) tzresult Lwt.t
+
+  val apply_outcome : context -> Game.outcome -> context tzresult Lwt.t
+
+  val timeout :
+    context -> t -> Staker.t -> (Game.outcome * context) tzresult Lwt.t
+
+  val refutation_step :
+    Staker.t -> Game.refutation -> Game.t -> Game.outcome option * Game.t
+
   module Internal_for_tests : sig
     val originated_sc_rollup : Origination_nonce.Internal_for_tests.t -> t
   end

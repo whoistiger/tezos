@@ -43,6 +43,7 @@ type error +=
   | (* `Temporary *) Sc_rollup_bad_inbox_level
   | (* `Temporary *) Sc_rollup_max_number_of_available_messages_reached
   | Not_implemented
+(* XXX Remove *)
 
 let () =
   register_error_kind
@@ -743,6 +744,11 @@ let initial_level ctxt rollup =
   | None -> fail (Sc_rollup_does_not_exist rollup)
   | Some level -> return level
 
-let init_game _ctxt _rollup _refuter _opponent = fail Not_implemented
+(* XXX implement *)
+let get_or_init_game _ctxt _rollup _stakers = fail Not_implemented
 
-let progress_game _ctxt _game _refutation = fail Not_implemented
+let update_game _ctxt _rollup _stakers _update_fn = fail Not_implemented
+
+let apply_outcome _ctxt _outcome = fail Not_implemented
+
+let timeout _ctxt _rollup _staker = fail Not_implemented

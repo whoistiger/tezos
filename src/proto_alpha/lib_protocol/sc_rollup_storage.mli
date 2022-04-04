@@ -404,17 +404,30 @@ val initial_level :
 
 (** XXX Write docstring.
   *)
-val init_game :
+val get_or_init_game :
   Raw_context.t ->
   Sc_rollup_repr.t ->
-  Sc_rollup_repr.Staker.t ->
-  Sc_rollup_repr.Staker.t ->
+  Sc_rollup_repr.Staker.t * Sc_rollup_repr.Staker.t ->
   (Sc_rollup_repr.Game.t * Raw_context.t) tzresult Lwt.t
 
 (** XXX Write docstring.
   *)
-val progress_game :
+val update_game :
   Raw_context.t ->
-  Sc_rollup_repr.Game.t ->
-  Sc_rollup_repr.Game.refutation ->
-  (Sc_rollup_repr.Game.outcome option * Raw_context.t) tzresult Lwt.t
+  Sc_rollup_repr.t ->
+  Sc_rollup_repr.Staker.t * Sc_rollup_repr.Staker.t ->
+  (Sc_rollup_repr.Game.t -> 'a * Sc_rollup_repr.Game.t) ->
+  ('a * Raw_context.t) tzresult Lwt.t
+
+(** XXX Write docstring.
+  *)
+val apply_outcome :
+  Raw_context.t -> Sc_rollup_repr.Game.outcome -> Raw_context.t tzresult Lwt.t
+
+(** XXX Write docstring.
+  *)
+val timeout :
+  Raw_context.t ->
+  Sc_rollup_repr.t ->
+  Sc_rollup_repr.Staker.t ->
+  (Sc_rollup_repr.Game.outcome * Raw_context.t) tzresult Lwt.t
