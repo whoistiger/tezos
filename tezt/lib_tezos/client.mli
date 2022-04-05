@@ -483,6 +483,32 @@ val gen_keys : ?alias:string -> t -> string Lwt.t
     [tezos-client show address] to get the generated key. *)
 val gen_and_show_keys : ?alias:string -> t -> Account.key Lwt.t
 
+(** [bls_gen_keys ~alias client] generates new bls unencrypted keys for [alias]. *)
+val bls_gen_keys :
+  ?hooks:Process.hooks -> ?force:bool -> alias:string -> t -> unit Lwt.t
+
+(** [bls_list_keys client] returns the known aliases with their public key hash from
+    client.
+
+    Fails if the format has not the form `<alias>: <public key hash>`. *)
+val bls_list_keys : ?hooks:Process.hooks -> t -> (string * string) list Lwt.t
+
+(** [bls_show_address ~alias client] returns the associated BLS account to [alias].
+
+    Fails if the output from the client has not the expected format (see
+    {!show_address}). *)
+val bls_show_address :
+  ?hooks:Process.hooks -> alias:string -> t -> Account.aggregate_key Lwt.t
+
+(** [bls import_secret_key account] imports [account.alias] as alias to
+    [account.secret_key] into the client. *)
+val bls_import_secret_key :
+  ?hooks:Process.hooks ->
+  ?force:bool ->
+  Account.aggregate_key ->
+  t ->
+  unit Lwt.t
+
 (** Run [tezos-client transfer amount from giver to receiver]. *)
 val transfer :
   ?hooks:Process.hooks ->
