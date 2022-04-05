@@ -20,7 +20,6 @@
   str
   ocamlgraph
   pyml
-  pyml-plot
   prbnmcn-gnuplot
   prbnmcn-stats)
  (link_flags (:standard -linkall))
