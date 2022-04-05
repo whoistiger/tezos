@@ -2486,6 +2486,7 @@ let tezos_shell_benchmarks =
         tezos_context;
         tezos_shell_context;
         tezos_micheline;
+        prbnmcn_gnuplot;
       ]
     ~linkall:true
 

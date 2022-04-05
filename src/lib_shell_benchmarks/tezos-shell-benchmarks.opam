@@ -17,6 +17,7 @@ depends: [
   "tezos-context"
   "tezos-shell-context"
   "tezos-micheline"
+  "prbnmcn-gnuplot"
 ]
 build: [
   ["dune" "build" "-p" name "-j" jobs]

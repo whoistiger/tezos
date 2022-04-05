@@ -13,7 +13,8 @@
   tezos-crypto
   tezos-context
   tezos-shell-context
-  tezos-micheline)
+  tezos-micheline
+  prbnmcn-gnuplot)
  (library_flags (:standard -linkall))
  (flags
   (:standard
