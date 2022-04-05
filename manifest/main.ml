@@ -321,6 +321,8 @@ let ledgerwallet_tezos = vendored_lib "ledgerwallet-tezos"
 
 let pyml_plot = vendored_lib "pyml-plot"
 
+let prbnmcn_gnuplot = vendored_lib "prbnmcn-gnuplot"
+
 (* INTERNAL LIBS *)
 
 let tezos_test_helpers =
@@ -4067,6 +4069,7 @@ let _tezos_snoop =
         ocamlgraph;
         pyml;
         pyml_plot;
+        prbnmcn_gnuplot;
         prbnmcn_stats;
       ]
     ~linkall:true

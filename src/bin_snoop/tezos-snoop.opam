@@ -19,6 +19,7 @@ depends: [
   "ocamlgraph"
   "pyml"
   "pyml-plot"
+  "prbnmcn-gnuplot"
   "prbnmcn-stats" { = "0.0.4" }
 ]
 build: [
