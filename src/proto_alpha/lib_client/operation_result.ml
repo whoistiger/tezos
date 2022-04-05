@@ -311,6 +311,30 @@ let pp_manager_operation_content (type kind) source internal pp_result ppf
         Sc_rollup.Address.pp
         rollup
         pp_result
+        result
+  | Sc_rollup_refute {rollup; opponent; refutation} ->
+      Format.fprintf
+        ppf
+        "@[<v 2>Refute staker %a in the smart contract rollup at address %a \
+         using refutation %a%a@]"
+        Sc_rollup.Staker.pp
+        opponent
+        Sc_rollup.Address.pp
+        rollup
+        Sc_rollup.Game.pp_refutation
+        refutation
+        pp_result
+        result
+  | Sc_rollup_timeout {rollup; staker} ->
+      Format.fprintf
+        ppf
+        "@[<v 2>Punish staker %a by timeout in the smart contract rollup at \
+         address %a%a@]"
+        Sc_rollup.Staker.pp
+        staker
+        Sc_rollup.Address.pp
+        rollup
+        pp_result
         result) ;
 
   Format.fprintf ppf "@]"
@@ -668,6 +692,27 @@ let pp_manager_operation_contents_and_result ppf
       Sc_rollup.Commitment_hash.pp
       staked_hash
   in
+  let pp_sc_rollup_refute_result
+      (Sc_rollup_refute_result {consumed_gas; outcome}) =
+    Format.fprintf ppf "@,Consumed gas: %a" Gas.Arith.pp consumed_gas ;
+    match outcome with
+    | None -> Format.fprintf ppf "@,Refutation game ongoing."
+    | Some o ->
+        Format.fprintf
+          ppf
+          "@,Refutation completed, outcome: %a"
+          Sc_rollup.Game.pp_outcome
+          o
+  in
+  let pp_sc_rollup_timeout_result
+      (Sc_rollup_timeout_result {consumed_gas; outcome}) =
+    Format.fprintf ppf "@,Consumed gas: %a" Gas.Arith.pp consumed_gas ;
+    Format.fprintf
+      ppf
+      "@,Refutation game timeout: %a"
+      Sc_rollup.Game.pp_outcome
+      outcome
+  in
   let pp_result (type kind) ppf (result : kind manager_operation_result) =
     Format.fprintf ppf "@," ;
     match result with
@@ -876,6 +921,32 @@ let pp_manager_operation_contents_and_result ppf
            rollup was BACKTRACKED, its expected effects (as follow) were NOT \
            applied.@]" ;
         pp_sc_rollup_publish_result op
+    | Applied (Sc_rollup_refute_result _ as op) ->
+        Format.fprintf
+          ppf
+          "This operation playing a refutation game step on a smart contract \
+           rollup was successfully applied" ;
+        pp_sc_rollup_refute_result op
+    | Backtracked ((Sc_rollup_refute_result _ as op), _errs) ->
+        Format.fprintf
+          ppf
+          "@[<v 0>This operation playing a refutation game step on a smart \
+           contract rollup was BACKTRACKED, its expected effects (as follow) \
+           were NOT applied.@]" ;
+        pp_sc_rollup_refute_result op
+    | Applied (Sc_rollup_timeout_result _ as op) ->
+        Format.fprintf
+          ppf
+          "This operation to end a refutation game on a smart contract rollup \
+           by timeout was successfully applied" ;
+        pp_sc_rollup_timeout_result op
+    | Backtracked ((Sc_rollup_timeout_result _ as op), _errs) ->
+        Format.fprintf
+          ppf
+          "@[<v 0>This operation to end a refutation game on a smart contract \
+           rollup by timeout was BACKTRACKED, its expected effects (as follow) \
+           were NOT applied.@]" ;
+        pp_sc_rollup_timeout_result op
   in
 
   Format.fprintf

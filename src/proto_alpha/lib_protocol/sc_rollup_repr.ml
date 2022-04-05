@@ -378,7 +378,34 @@ module Game = struct
           (fun p -> Proof p);
       ]
 
+  let pp_step ppf step =
+    match step with
+    | Dissection states ->
+        Format.fprintf ppf "dissection:\n" ;
+        Format.pp_print_list
+          ~pp_sep:(fun ppf () -> Format.pp_print_string ppf ";\n\n")
+          (fun ppf (hash, t) ->
+            Format.fprintf
+              ppf
+              "tick = %a, state = %a\n"
+              Sc_rollup_tick_repr.pp
+              t
+              State_hash.pp
+              hash)
+          ppf
+          states
+    | Proof proof -> Format.fprintf ppf "proof: %a" Proof.pp proof
+
   type refutation = {choice : Sc_rollup_tick_repr.t; step : step}
+
+  let pp_refutation ppf refutation =
+    Format.fprintf
+      ppf
+      "Refute at tick %a with %a.\n"
+      Sc_rollup_tick_repr.pp
+      refutation.choice
+      pp_step
+      refutation.step
 
   let refutation_encoding =
     let open Data_encoding in
@@ -392,6 +419,19 @@ module Game = struct
   type outcome =
     | SlashStaker of Staker.t
     | SlashBothStakers of Staker.t * Staker.t
+
+  let pp_outcome ppf outcome =
+    match outcome with
+    | SlashStaker staker ->
+        Format.fprintf ppf "Staker %a loses their stake.\n" Staker.pp staker
+    | SlashBothStakers (a, b) ->
+        Format.fprintf
+          ppf
+          "Both stakers %a and %a lose their stakes.\n"
+          Staker.pp
+          a
+          Staker.pp
+          b
 
   let outcome_encoding =
     let open Data_encoding in

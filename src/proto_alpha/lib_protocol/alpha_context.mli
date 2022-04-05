@@ -2594,9 +2594,13 @@ module Sc_rollup : sig
 
     type refutation = {choice : Sc_rollup_tick_repr.t; step : step}
 
+    val pp_refutation : Format.formatter -> refutation -> unit
+
     type outcome =
       | SlashStaker of Staker.t
       | SlashBothStakers of Staker.t * Staker.t
+
+    val pp_outcome : Format.formatter -> outcome -> unit
 
     val outcome_encoding : outcome Data_encoding.t
   end

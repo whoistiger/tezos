@@ -169,8 +169,6 @@ module Game : sig
     turn : bool;
   }
 
-  (*  val encoding : t Data_encoding.t *)
-
   val pp : Format.formatter -> t -> unit
 
   type step =
@@ -179,11 +177,15 @@ module Game : sig
 
   type refutation = {choice : Sc_rollup_tick_repr.t; step : step}
 
+  val pp_refutation : Format.formatter -> refutation -> unit
+
   val refutation_encoding : refutation Data_encoding.t
 
   type outcome =
     | SlashStaker of Staker.t
     | SlashBothStakers of Staker.t * Staker.t
+
+  val pp_outcome : Format.formatter -> outcome -> unit
 
   val outcome_encoding : outcome Data_encoding.t
 end
