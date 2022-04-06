@@ -2574,7 +2574,7 @@ module Sc_rollup : sig
   end
 
   module Proof : sig
-    type t = unit
+    type t = Computation_step | Input_step | Blocked_step
   end
 
   module Game : sig
@@ -2583,7 +2583,7 @@ module Sc_rollup : sig
       start_state : State_hash.t;
       start_tick : Sc_rollup_tick_repr.t;
       stop_states : State_hash.t * State_hash.t;
-      stop_ticks : Sc_rollup_tick_repr.t * Sc_rollup_tick_repr.t;
+      stop_tick : Sc_rollup_tick_repr.t;
       current_dissection : (State_hash.t * Sc_rollup_tick_repr.t) list;
       turn : bool;
     }

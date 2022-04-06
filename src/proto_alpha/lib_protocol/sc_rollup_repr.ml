@@ -335,9 +335,33 @@ module Kind = struct
 end
 
 module Proof = struct
-  type t = unit
+  (* TODO #2759: flesh out each of these proof cases *)
+  type t = Computation_step | Input_step | Blocked_step
 
-  let encoding = Data_encoding.unit
+  let encoding =
+    Data_encoding.(
+      union
+        ~tag_size:`Uint8
+        [
+          case
+            ~title:"Proof of a normal computation step"
+            (Tag 0)
+            unit
+            (function Computation_step -> Some () | _ -> None)
+            (fun () -> Computation_step);
+          case
+            ~title:"Proof of an input step"
+            (Tag 1)
+            unit
+            (function Input_step -> Some () | _ -> None)
+            (fun () -> Input_step);
+          case
+            ~title:"Proof that the PVM is blocked"
+            (Tag 2)
+            unit
+            (function Blocked_step -> Some () | _ -> None)
+            (fun () -> Blocked_step);
+        ])
 
   let pp _ _ = ()
 end
@@ -348,12 +372,97 @@ module Game = struct
     start_state : State_hash.t;
     start_tick : Sc_rollup_tick_repr.t;
     stop_states : State_hash.t * State_hash.t;
-    stop_ticks : Sc_rollup_tick_repr.t * Sc_rollup_tick_repr.t;
+    stop_tick : Sc_rollup_tick_repr.t;
     current_dissection : (State_hash.t * Sc_rollup_tick_repr.t) list;
     turn : bool;
   }
 
+  let encoding =
+    let open Data_encoding in
+    conv
+      (fun {
+             stakers;
+             start_state;
+             start_tick;
+             stop_states;
+             stop_tick;
+             current_dissection;
+             turn;
+           } ->
+        ( stakers,
+          start_state,
+          start_tick,
+          stop_states,
+          stop_tick,
+          current_dissection,
+          turn ))
+      (fun ( stakers,
+             start_state,
+             start_tick,
+             stop_states,
+             stop_tick,
+             current_dissection,
+             turn ) ->
+        {
+          stakers;
+          start_state;
+          start_tick;
+          stop_states;
+          stop_tick;
+          current_dissection;
+          turn;
+        })
+      (obj7
+         (req "stakers" (tup2 Staker.encoding Staker.encoding))
+         (req "start_state" State_hash.encoding)
+         (req "start_tick" Sc_rollup_tick_repr.encoding)
+         (req "stop_states" (tup2 State_hash.encoding State_hash.encoding))
+         (req "stop_tick" Sc_rollup_tick_repr.encoding)
+         (req
+            "current_dissection"
+            (list (tup2 State_hash.encoding Sc_rollup_tick_repr.encoding)))
+         (req "turn" bool))
+
   let pp _ _ = ()
+
+  module Index = struct
+    type t = Staker.t * Staker.t
+
+    let encoding = Data_encoding.tup2 Staker.encoding Staker.encoding
+
+    let compare (a, b) (c, d) =
+      match Staker.compare a c with 0 -> Staker.compare b d | x -> x
+
+    let to_path (a, b) p = Staker.to_b58check a :: Staker.to_b58check b :: p
+
+    let both_of_b58check_opt (a, b) =
+      Option.bind (Staker.of_b58check_opt b) (fun b_staker ->
+          Option.bind (Staker.of_b58check_opt a) (fun a_staker ->
+              Some (a_staker, b_staker)))
+
+    let of_path = function [a; b] -> both_of_b58check_opt (a, b) | _ -> None
+
+    let path_length = 2
+
+    let rpc_arg =
+      let descr =
+        "A pair of stakers that index a smart contract rollup refutation game."
+      in
+      let construct (a, b) =
+        Format.sprintf "%s-%s" (Staker.to_b58check a) (Staker.to_b58check b)
+      in
+      let destruct s =
+        match String.split_on_char '-' s with
+        | [a; b] -> (
+            match both_of_b58check_opt (a, b) with
+            | Some stakers -> ok stakers
+            | None ->
+                Result.error (Format.sprintf "Invalid game index notation %s" s)
+            )
+        | _ -> Result.error (Format.sprintf "Invalid game index notation %s" s)
+      in
+      RPC_arg.make ~descr ~name:"game_index" ~construct ~destruct ()
+  end
 
   type step =
     | Dissection of (State_hash.t * Sc_rollup_tick_repr.t) list

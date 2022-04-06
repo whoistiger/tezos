@@ -1617,4 +1617,30 @@ module Sc_rollup = struct
 
            let encoding = Raw_level_repr.encoding
          end)
+
+  module Game =
+    Make_indexed_carbonated_data_storage
+      (Make_subcontext (Registered) (Indexed_context.Raw_context)
+         (struct
+           let name = ["game"]
+         end))
+         (Make_index (Sc_rollup_repr.Game.Index))
+         (struct
+           type t = Sc_rollup_repr.Game.t
+
+           let encoding = Sc_rollup_repr.Game.encoding
+         end)
+
+  module Game_timeout =
+    Make_indexed_carbonated_data_storage
+      (Make_subcontext (Registered) (Indexed_context.Raw_context)
+         (struct
+           let name = ["game_timeout"]
+         end))
+         (Make_index (Sc_rollup_repr.Game.Index))
+         (struct
+           type t = Raw_level_repr.t
+
+           let encoding = Raw_level_repr.encoding
+         end)
 end
