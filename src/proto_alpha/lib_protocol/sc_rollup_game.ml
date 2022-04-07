@@ -331,6 +331,8 @@ module Make (PVM : Sc_rollup_PVM_sem.S) = struct
         section_start_state =
           (match commit.section_stop_state with
           | Some hash -> hash
+          (* The `None` branch is impossible because a commitment must
+             have an actual hash. *)
           | None -> assert false);
         section_start_at = commit.section_stop_at;
         section_stop_state = None;
