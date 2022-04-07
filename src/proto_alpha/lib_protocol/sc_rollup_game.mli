@@ -282,7 +282,7 @@ module Make : functor (PVM : Sc_rollup_PVM_sem.S) -> sig
       from the previous commit to the current commit, the second is a
       single-tick section starting at the current commit and with
       [section_stop_state] set to [None]. This represents the fact that
-      the commitment claims the final state as a blocking state, and
+      the commitment claims the final state is a blocking state, and
       allows the refuter to challenge that. *)
   val initial : commit -> refutation -> t * move
 
