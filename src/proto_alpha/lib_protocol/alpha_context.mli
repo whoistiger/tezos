@@ -2578,15 +2578,18 @@ module Sc_rollup : sig
   end
 
   module Game : sig
+    type player = Alice | Bob
+
     type t = {
-      stakers : Staker.t * Staker.t;
+      turn : player;
       start_state : State_hash.t;
       start_tick : Sc_rollup_tick_repr.t;
-      stop_states : State_hash.t * State_hash.t;
+      stop_state : State_hash.t option;
       stop_tick : Sc_rollup_tick_repr.t;
       current_dissection : (State_hash.t * Sc_rollup_tick_repr.t) list;
-      turn : bool;
     }
+
+    val opponent : player -> player
 
     type step =
       | Dissection of (State_hash.t * Sc_rollup_tick_repr.t) list
@@ -2652,7 +2655,7 @@ module Sc_rollup : sig
   val initial_level : context -> t -> Raw_level.t tzresult Lwt.t
 
   val get_or_init_game :
-    context -> t -> Staker.t * Staker.t -> (Game.t * context) tzresult Lwt.t
+    context -> t -> Staker.t -> Staker.t -> (Game.t * context) tzresult Lwt.t
 
   val update_game :
     context ->

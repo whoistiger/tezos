@@ -363,67 +363,118 @@ module Proof = struct
             (fun () -> Blocked_step);
         ])
 
+  (* TODO #2759 *)
   let pp _ _ = ()
 end
 
 module Game = struct
+  type player = Alice | Bob
+
   type t = {
-    stakers : Staker.t * Staker.t;
+    turn : player;
     start_state : State_hash.t;
     start_tick : Sc_rollup_tick_repr.t;
-    stop_states : State_hash.t * State_hash.t;
+    stop_state : State_hash.t option;
     stop_tick : Sc_rollup_tick_repr.t;
     current_dissection : (State_hash.t * Sc_rollup_tick_repr.t) list;
-    turn : bool;
   }
+
+  let player_encoding =
+    let open Data_encoding in
+    union
+      ~tag_size:`Uint8
+      [
+        case
+          ~title:"Alice"
+          (Tag 0)
+          string
+          (function Alice -> Some "alice" | _ -> None)
+          (fun _ -> Alice);
+        case
+          ~title:"Bob"
+          (Tag 1)
+          string
+          (function Bob -> Some "bob" | _ -> None)
+          (fun _ -> Bob);
+      ]
+
+  let string_of_player = function Alice -> "alice" | Bob -> "bob"
+
+  let pp_player ppf player = Format.fprintf ppf "%s" (string_of_player player)
+
+  let opponent = function Alice -> Bob | Bob -> Alice
 
   let encoding =
     let open Data_encoding in
     conv
       (fun {
-             stakers;
+             turn;
              start_state;
              start_tick;
-             stop_states;
+             stop_state;
              stop_tick;
              current_dissection;
-             turn;
            } ->
-        ( stakers,
+        ( turn,
           start_state,
           start_tick,
-          stop_states,
+          stop_state,
           stop_tick,
-          current_dissection,
-          turn ))
-      (fun ( stakers,
+          current_dissection ))
+      (fun ( turn,
              start_state,
              start_tick,
-             stop_states,
+             stop_state,
              stop_tick,
-             current_dissection,
-             turn ) ->
+             current_dissection ) ->
         {
-          stakers;
+          turn;
           start_state;
           start_tick;
-          stop_states;
+          stop_state;
           stop_tick;
           current_dissection;
-          turn;
         })
-      (obj7
-         (req "stakers" (tup2 Staker.encoding Staker.encoding))
+      (obj6
+         (req "turn" player_encoding)
          (req "start_state" State_hash.encoding)
          (req "start_tick" Sc_rollup_tick_repr.encoding)
-         (req "stop_states" (tup2 State_hash.encoding State_hash.encoding))
+         (req "stop_state" (option State_hash.encoding))
          (req "stop_tick" Sc_rollup_tick_repr.encoding)
          (req
             "current_dissection"
-            (list (tup2 State_hash.encoding Sc_rollup_tick_repr.encoding)))
-         (req "turn" bool))
+            (list (tup2 State_hash.encoding Sc_rollup_tick_repr.encoding))))
 
-  let pp _ _ = ()
+  let pp_dissection ppf d =
+    Format.pp_print_list
+      ~pp_sep:(fun ppf () -> Format.pp_print_string ppf ";\n")
+      (fun ppf (state, tick) ->
+        Format.fprintf
+          ppf
+          "  %a @ %a"
+          State_hash.pp
+          state
+          Sc_rollup_tick_repr.pp
+          tick)
+      ppf
+      d
+
+  let pp ppf game =
+    Format.fprintf
+      ppf
+      "%a @ %a -> %a @ %a [%a] %a playing"
+      State_hash.pp
+      game.start_state
+      Sc_rollup_tick_repr.pp
+      game.start_tick
+      (Format.pp_print_option State_hash.pp)
+      game.stop_state
+      Sc_rollup_tick_repr.pp
+      game.stop_tick
+      pp_dissection
+      game.current_dissection
+      pp_player
+      game.turn
 
   module Index = struct
     type t = Staker.t * Staker.t
@@ -462,7 +513,32 @@ module Game = struct
         | _ -> Result.error (Format.sprintf "Invalid game index notation %s" s)
       in
       RPC_arg.make ~descr ~name:"game_index" ~construct ~destruct ()
+
+    let normalize (a, b) =
+      match Staker.compare a b with 1 -> (b, a) | _ -> (a, b)
+
+    let as_player (a, _) s = if Staker.equal a s then Alice else Bob
   end
+
+  let initial (parent : Commitment.t) refuter defender (commit : Commitment.t) =
+    let (alice, _) = Index.normalize (refuter, defender) in
+    let alice_to_play = Staker.equal alice refuter in
+    let tick =
+      Sc_rollup_tick_repr.of_int
+        (Int32.to_int (Number_of_ticks.to_int32 commit.number_of_ticks))
+    in
+    match tick with
+    | Some tick ->
+        {
+          turn = (if alice_to_play then Alice else Bob);
+          start_state = parent.compressed_state;
+          start_tick = Sc_rollup_tick_repr.initial;
+          stop_state = None;
+          stop_tick = Sc_rollup_tick_repr.next tick;
+          current_dissection = [(commit.compressed_state, tick)];
+        }
+    (* XXX: explain or remove this *)
+    | None -> assert false
 
   type step =
     | Dissection of (State_hash.t * Sc_rollup_tick_repr.t) list

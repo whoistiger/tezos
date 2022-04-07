@@ -407,7 +407,8 @@ val initial_level :
 val get_or_init_game :
   Raw_context.t ->
   Sc_rollup_repr.t ->
-  Sc_rollup_repr.Staker.t * Sc_rollup_repr.Staker.t ->
+  Sc_rollup_repr.Staker.t ->
+  Sc_rollup_repr.Staker.t ->
   (Sc_rollup_repr.Game.t * Raw_context.t) tzresult Lwt.t
 
 (** XXX Write docstring.

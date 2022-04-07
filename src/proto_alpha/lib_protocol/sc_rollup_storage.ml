@@ -42,8 +42,8 @@ type error +=
       Sc_rollup_repr.Commitment_hash.t
   | (* `Temporary *) Sc_rollup_bad_inbox_level
   | (* `Temporary *) Sc_rollup_max_number_of_available_messages_reached
-  | Not_implemented
-(* XXX Remove *)
+  | (* XXX Remove *)
+      Not_implemented
 
 let () =
   register_error_kind
@@ -227,15 +227,12 @@ let originate ctxt ~kind ~boot_sector =
   Raw_context.increment_origination_nonce ctxt >>?= fun (ctxt, nonce) ->
   let level = Raw_context.current_level ctxt in
   Sc_rollup_repr.Address.from_nonce nonce >>?= fun address ->
-  Storage.Sc_rollup.PVM_kind.add ctxt address kind >>= fun ctxt ->
-  Storage.Sc_rollup.Initial_level.add
-    ctxt
-    address
-    (Level_storage.current ctxt).level
+  Store.PVM_kind.add ctxt address kind >>= fun ctxt ->
+  Store.Initial_level.add ctxt address (Level_storage.current ctxt).level
   >>= fun ctxt ->
-  Storage.Sc_rollup.Boot_sector.add ctxt address boot_sector >>= fun ctxt ->
+  Store.Boot_sector.add ctxt address boot_sector >>= fun ctxt ->
   let inbox = Sc_rollup_inbox_repr.empty address level.level in
-  Storage.Sc_rollup.Inbox.init ctxt address inbox >>=? fun (ctxt, size_diff) ->
+  Store.Inbox.init ctxt address inbox >>=? fun (ctxt, size_diff) ->
   Store.Last_cemented_commitment.init ctxt address Commitment_hash.zero
   >>=? fun (ctxt, lcc_size_diff) ->
   Store.Staker_count.init ctxt address 0l >>=? fun (ctxt, stakers_size_diff) ->
@@ -252,7 +249,7 @@ let originate ctxt ~kind ~boot_sector =
   in
   return (address, size, ctxt)
 
-let kind ctxt address = Storage.Sc_rollup.PVM_kind.find ctxt address
+let kind ctxt address = Store.PVM_kind.find ctxt address
 
 let last_cemented_commitment ctxt rollup =
   let open Lwt_tzresult_syntax in
@@ -264,17 +261,17 @@ let last_cemented_commitment ctxt rollup =
 (** Try to consume n messages. *)
 let consume_n_messages ctxt rollup n =
   let open Lwt_tzresult_syntax in
-  let* (ctxt, inbox) = Storage.Sc_rollup.Inbox.get ctxt rollup in
+  let* (ctxt, inbox) = Store.Inbox.get ctxt rollup in
   Sc_rollup_inbox_repr.consume_n_messages n inbox >>?= function
   | None -> return ctxt
   | Some inbox ->
-      let* (ctxt, size) = Storage.Sc_rollup.Inbox.update ctxt rollup inbox in
+      let* (ctxt, size) = Store.Inbox.update ctxt rollup inbox in
       assert (Compare.Int.(size <= 0)) ;
       return ctxt
 
 let inbox ctxt rollup =
   let open Lwt_tzresult_syntax in
-  let* (ctxt, res) = Storage.Sc_rollup.Inbox.find ctxt rollup in
+  let* (ctxt, res) = Store.Inbox.find ctxt rollup in
   match res with
   | None -> fail (Sc_rollup_does_not_exist rollup)
   | Some inbox -> return (inbox, ctxt)
@@ -311,7 +308,7 @@ let add_messages ctxt rollup messages =
   let*? ctxt =
     Sc_rollup_in_memory_inbox.set_current_messages ctxt rollup current_messages
   in
-  Storage.Sc_rollup.Inbox.update ctxt rollup inbox >>=? fun (ctxt, size) ->
+  let* (ctxt, size) = Store.Inbox.update ctxt rollup inbox in
   return (inbox, Z.of_int size, ctxt)
 
 (* This function is called in other functions in the module only after they have
@@ -735,18 +732,44 @@ let remove_staker ctxt rollup staker =
         in
         go staked_on ctxt
 
-let list ctxt = Storage.Sc_rollup.PVM_kind.keys ctxt >|= Result.return
+let list ctxt = Store.PVM_kind.keys ctxt >|= Result.return
 
 let initial_level ctxt rollup =
   let open Lwt_tzresult_syntax in
-  let* level = Storage.Sc_rollup.Initial_level.find ctxt rollup in
+  let* level = Store.Initial_level.find ctxt rollup in
   match level with
   | None -> fail (Sc_rollup_does_not_exist rollup)
   | Some level -> return level
 
-(* XXX implement *)
-let get_or_init_game _ctxt _rollup _stakers = fail Not_implemented
+(* Replace with protocol constant and consider good value. *)
+let timeout_period = 500
 
+let timeout_level ctxt =
+  let level = Raw_context.current_level ctxt in
+  Raw_level_repr.add level.level timeout_period
+
+let get_or_init_game ctxt rollup refuter defender =
+  let open Lwt_tzresult_syntax in
+  let stakers = Sc_rollup_repr.Game.Index.normalize (refuter, defender) in
+  let* (ctxt, game) = Store.Game.find (ctxt, rollup) stakers in
+  match game with
+  | Some g -> return (g, ctxt)
+  | None ->
+      let* ((_, commit), ctxt) =
+        get_conflict_point ctxt rollup refuter defender
+      in
+      let* (commit, ctxt) = get_commitment_internal ctxt rollup commit in
+      let* (parent, ctxt) =
+        get_commitment_internal ctxt rollup commit.predecessor
+      in
+      let game = Sc_rollup_repr.Game.initial parent refuter defender commit in
+      let* (ctxt, _) = Store.Game.init (ctxt, rollup) stakers game in
+      let* (ctxt, _) =
+        Store.Game_timeout.init (ctxt, rollup) stakers (timeout_level ctxt)
+      in
+      return (game, ctxt)
+
+(* XXX implement *)
 let update_game _ctxt _rollup _stakers _update_fn = fail Not_implemented
 
 let apply_outcome _ctxt _outcome = fail Not_implemented

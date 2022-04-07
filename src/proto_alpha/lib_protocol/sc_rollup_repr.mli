@@ -158,16 +158,23 @@ module Proof : sig
   val pp : Format.formatter -> t -> unit
 end
 
+(* XXX: add docstrings *)
 module Game : sig
+  (** The two stakers are an ordered pair of public key hashes. We use
+      [Alice] and [Bob] to represent the first and second player
+      respectively. *)
+  type player = Alice | Bob
+
   type t = {
-    stakers : Staker.t * Staker.t;
+    turn : player;
     start_state : State_hash.t;
     start_tick : Sc_rollup_tick_repr.t;
-    stop_states : State_hash.t * State_hash.t;
+    stop_state : State_hash.t option;
     stop_tick : Sc_rollup_tick_repr.t;
     current_dissection : (State_hash.t * Sc_rollup_tick_repr.t) list;
-    turn : bool;
   }
+
+  val opponent : player -> player
 
   val encoding : t Data_encoding.t
 
@@ -187,7 +194,13 @@ module Game : sig
     val encoding : t Data_encoding.t
 
     val compare : t -> t -> int
+
+    val normalize : t -> t
+
+    val as_player : t -> Staker.t -> player
   end
+
+  val initial : Commitment.t -> Staker.t -> Staker.t -> Commitment.t -> t
 
   type step =
     | Dissection of (State_hash.t * Sc_rollup_tick_repr.t) list
