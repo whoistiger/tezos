@@ -218,7 +218,7 @@ module Make (PVM : Sc_rollup_PVM_sem.S) = struct
          (req "start_state" State_hash.encoding)
          (req "start_at" Sc_rollup_tick_repr.encoding)
          (req "player_stop_state" (option State_hash.encoding))
-         (req "oponent_stop_state" (option State_hash.encoding))
+         (req "opponent_stop_state" (option State_hash.encoding))
          (req "stop_at" Sc_rollup_tick_repr.encoding)
          (req "current_dissection" Section.dissection_encoding))
 
