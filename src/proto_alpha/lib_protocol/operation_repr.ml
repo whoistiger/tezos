@@ -387,7 +387,8 @@ and _ manager_operation =
       -> Kind.sc_rollup_refute manager_operation
   | Sc_rollup_timeout : {
       rollup : Sc_rollup_repr.t;
-      staker : Sc_rollup_repr.Staker.t;
+      winner : Sc_rollup_repr.Staker.t;
+      loser : Sc_rollup_repr.Staker.t;
     }
       -> Kind.sc_rollup_timeout manager_operation
 
@@ -1013,15 +1014,20 @@ module Encoding = struct
           tag = sc_rollup_operation_timeout_tag;
           name = "sc_rollup_timeout";
           encoding =
-            obj2
+            obj3
               (req "rollup" Sc_rollup_repr.encoding)
-              (req "staker" Sc_rollup_repr.Staker.encoding);
+              (req "winner" Sc_rollup_repr.Staker.encoding)
+              (req "loser" Sc_rollup_repr.Staker.encoding);
           select =
             (function
             | Manager (Sc_rollup_timeout _ as op) -> Some op | _ -> None);
           proj =
-            (function Sc_rollup_timeout {rollup; staker} -> (rollup, staker));
-          inj = (fun (rollup, staker) -> Sc_rollup_timeout {rollup; staker});
+            (function
+            | Sc_rollup_timeout {rollup; winner; loser} ->
+                (rollup, winner, loser));
+          inj =
+            (fun (rollup, winner, loser) ->
+              Sc_rollup_timeout {rollup; winner; loser});
         }
   end
 

@@ -325,13 +325,15 @@ let pp_manager_operation_content (type kind) source internal pp_result ppf
         refutation
         pp_result
         result
-  | Sc_rollup_timeout {rollup; staker} ->
+  | Sc_rollup_timeout {rollup; winner; loser} ->
       Format.fprintf
         ppf
-        "@[<v 2>Punish staker %a by timeout in the smart contract rollup at \
-         address %a%a@]"
+        "@[<v 2>Punish one of the stakers %a or %a by timeout in the smart \
+         contract rollup at address %a%a@]"
         Sc_rollup.Staker.pp
-        staker
+        loser
+        Sc_rollup.Staker.pp
+        winner
         Sc_rollup.Address.pp
         rollup
         pp_result

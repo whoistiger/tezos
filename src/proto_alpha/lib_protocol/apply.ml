@@ -1759,19 +1759,20 @@ let apply_external_manager_operation_content :
       Sc_rollup.update_game
         ctxt
         rollup
-        (source, opponent)
-        (Sc_rollup.refutation_step source refutation)
+        source
+        opponent
+        (Sc_rollup_game.move refutation)
       >>=? fun (outcome, ctxt) ->
       (match outcome with
       | None -> return ctxt
-      | Some o -> Sc_rollup.apply_outcome ctxt o)
+      | Some o -> Sc_rollup.apply_outcome ctxt rollup o)
       >>=? fun ctxt ->
       let consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt in
       let result = Sc_rollup_refute_result {outcome; consumed_gas} in
       return (ctxt, result, [])
-  | Sc_rollup_timeout {rollup; staker} ->
-      Sc_rollup.timeout ctxt rollup staker >>=? fun (outcome, ctxt) ->
-      Sc_rollup.apply_outcome ctxt outcome >>=? fun ctxt ->
+  | Sc_rollup_timeout {rollup; winner; loser} ->
+      Sc_rollup.timeout ctxt rollup (winner, loser) >>=? fun (outcome, ctxt) ->
+      Sc_rollup.apply_outcome ctxt rollup outcome >>=? fun ctxt ->
       let consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt in
       let result = Sc_rollup_timeout_result {outcome; consumed_gas} in
       return (ctxt, result, [])

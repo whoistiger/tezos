@@ -516,11 +516,9 @@ module Game = struct
 
     let normalize (a, b) =
       match Staker.compare a b with 1 -> (b, a) | _ -> (a, b)
-
-    let as_player (a, _) s = if Staker.equal a s then Alice else Bob
   end
 
-  let initial (parent : Commitment.t) refuter defender (commit : Commitment.t) =
+  let initial (parent : Commitment.t) (commit : Commitment.t) refuter defender =
     let (alice, _) = Index.normalize (refuter, defender) in
     let alice_to_play = Staker.equal alice refuter in
     let tick =

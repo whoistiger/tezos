@@ -57,9 +57,6 @@ module Sc_rollup = struct
   include Sc_rollup_repr
   module Inbox = Sc_rollup_inbox_repr
   include Sc_rollup_storage
-
-  (* XXX Fix and move this *)
-  let refutation_step _staker _ref game = (None, game)
 end
 
 module Entrypoint = Entrypoint_repr

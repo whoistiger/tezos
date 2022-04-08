@@ -2660,17 +2660,18 @@ module Sc_rollup : sig
   val update_game :
     context ->
     t ->
-    Staker.t * Staker.t ->
-    (Game.t -> 'a * Game.t) ->
-    ('a * context) tzresult Lwt.t
+    Staker.t ->
+    Staker.t ->
+    (Game.t -> ('a, Game.t) Either.t) ->
+    ('a option * context) tzresult Lwt.t
 
-  val apply_outcome : context -> Game.outcome -> context tzresult Lwt.t
+  val apply_outcome : context -> t -> Game.outcome -> context tzresult Lwt.t
 
   val timeout :
-    context -> t -> Staker.t -> (Game.outcome * context) tzresult Lwt.t
-
-  val refutation_step :
-    Staker.t -> Game.refutation -> Game.t -> Game.outcome option * Game.t
+    context ->
+    t ->
+    Staker.t * Staker.t ->
+    (Game.outcome * context) tzresult Lwt.t
 
   module Internal_for_tests : sig
     val originated_sc_rollup : Origination_nonce.Internal_for_tests.t -> t
@@ -3089,7 +3090,8 @@ and _ manager_operation =
       -> Kind.sc_rollup_refute manager_operation
   | Sc_rollup_timeout : {
       rollup : Sc_rollup.t;
-      staker : Sc_rollup.Staker.t;
+      winner : Sc_rollup.Staker.t;
+      loser : Sc_rollup.Staker.t;
     }
       -> Kind.sc_rollup_timeout manager_operation
 

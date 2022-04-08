@@ -290,3 +290,10 @@ module Make : functor (PVM : Sc_rollup_PVM_sem.S) -> sig
       on [game]. *)
   val play : t -> move -> move_result Lwt.t
 end
+
+val move :
+  Alpha_context.Sc_rollup.Game.refutation ->
+  Alpha_context.Sc_rollup.Game.t ->
+  ( Alpha_context.Sc_rollup.Game.outcome,
+    Alpha_context.Sc_rollup.Game.t )
+  Either.t

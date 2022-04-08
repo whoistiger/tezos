@@ -158,13 +158,37 @@ module Proof : sig
   val pp : Format.formatter -> t -> unit
 end
 
-(* XXX: add docstrings *)
+(** The refutation game types are defined here, as well as the logic for
+    how to create a new game from a pair of commits in the commit tree.
+    See the [Sc_rollup_game] module for more detailed documentation of
+    the game itself---that module is where the update function for
+    playing moves is defined. *)
 module Game : sig
-  (** The two stakers are an ordered pair of public key hashes. We use
-      [Alice] and [Bob] to represent the first and second player
-      respectively. *)
+  (** The two stakers index the game in the storage, as an ordered pair
+      of public key hashes. We use [Alice] and [Bob] to represent the
+      first and second player respectively. *)
   type player = Alice | Bob
 
+  (**
+     A game state is characterized by:
+
+      - [turn], the player that must provide the next move.
+
+      - [start_state/start_tick], the state the two players agree on.
+
+      - [stop_state/stop_tick], the state of the player who is not the
+        next to move.
+
+      - [current_dissection], a list of intermediate states. The current
+        player will specify, in the next move, a tick count that
+        represents the prefix list (possibly empty) of these
+        intermediate states she agrees with.
+
+      Invariants:
+      -----------
+      - [current_dissection] cannot be empty.
+      - [start_tick] is strictly less than [stop_tick].
+  *)
   type t = {
     turn : player;
     start_state : State_hash.t;
@@ -174,6 +198,7 @@ module Game : sig
     current_dissection : (State_hash.t * Sc_rollup_tick_repr.t) list;
   }
 
+  (** Return the other player *)
   val opponent : player -> player
 
   val encoding : t Data_encoding.t
@@ -195,23 +220,45 @@ module Game : sig
 
     val compare : t -> t -> int
 
+    (** The 'normal form' for indices is when the two stakers are
+        ordered (we just use [Staker.compare]). *)
     val normalize : t -> t
-
-    val as_player : t -> Staker.t -> player
   end
 
-  val initial : Commitment.t -> Staker.t -> Staker.t -> Commitment.t -> t
+  (** To begin a game, first the conflict point in the commit tree is
+      found, and then this function is applied.
+      
+      [initial parent child refuter defender] will construct an initial
+      game where [refuter] is next to play. The game has [start_state]
+      determined by [parent], the commit that both stakers agree on.
+      
+      The game has [stop_state] set to [None], a single tick after the
+      [child] commit, to represent the claim that [child] commit has a
+      blocked state. [current_dissection] gives [refuter] a choice: she
+      can refute the commit itself by providing a new dissection between
+      the two committed states, or she can refute the claim that the
+      [child] commit is a blocked state by immediately providing a proof
+      of a single tick increment from that state to its successor. *)
+  val initial : Commitment.t -> Commitment.t -> Staker.t -> Staker.t -> t
 
+  (** A [step] in the game is either a new dissection (if there are
+      intermediate ticks remaining to put in it) or a proof. *)
   type step =
     | Dissection of (State_hash.t * Sc_rollup_tick_repr.t) list
     | Proof of Proof.t
 
+  (** A [refutation] is a move in the game. [choice] is the final tick
+      in the current dissection at which the two players agree. *)
   type refutation = {choice : Sc_rollup_tick_repr.t; step : step}
 
   val pp_refutation : Format.formatter -> refutation -> unit
 
   val refutation_encoding : refutation Data_encoding.t
 
+  (** A game usually ends with [SlashStaker loser], punishing one of the
+      two players. In some circumstances a game can end with a valid
+      proof that proves both players wrong, in which case
+      [SlashBothStakers] is used. *)
   type outcome =
     | SlashStaker of Staker.t
     | SlashBothStakers of Staker.t * Staker.t

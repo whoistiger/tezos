@@ -456,7 +456,8 @@ and _ manager_operation =
       -> Kind.sc_rollup_refute manager_operation
   | Sc_rollup_timeout : {
       rollup : Sc_rollup_repr.t;
-      staker : Sc_rollup_repr.Staker.t;
+      winner : Sc_rollup_repr.Staker.t;
+      loser : Sc_rollup_repr.Staker.t;
     }
       -> Kind.sc_rollup_timeout manager_operation
 

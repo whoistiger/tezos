@@ -458,3 +458,6 @@ module Make (PVM : Sc_rollup_PVM_sem.S) = struct
         @@ Over {winner = Some (opponent player); reason = InvalidMove}
     | Some state -> Lwt.return state
 end
+
+(* XXX: implement this *)
+let move _refutation game = Either.Right game

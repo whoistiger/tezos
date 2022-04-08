@@ -42,18 +42,11 @@ type error +=
       Sc_rollup_repr.Commitment_hash.t
   | (* `Temporary *) Sc_rollup_bad_inbox_level
   | (* `Temporary *) Sc_rollup_max_number_of_available_messages_reached
-  | (* XXX Remove *)
-      Not_implemented
+  | (* `Temporary *) Sc_rollup_wrong_turn
+  | (* `Temporary *) Sc_rollup_no_game
+  | (* `Temporary *) Sc_rollup_timeout_level_not_reached
 
 let () =
-  register_error_kind
-    `Temporary
-    ~id:"Not implemented"
-    ~title:"Not implemented"
-    ~description:"Not implemented"
-    Data_encoding.unit
-    (function Not_implemented -> Some () | _ -> None)
-    (fun () -> Not_implemented) ;
   register_error_kind
     `Temporary
     ~id:"Sc_rollup_max_number_of_available_messages_reached"
@@ -64,6 +57,30 @@ let () =
       | Sc_rollup_max_number_of_available_messages_reached -> Some ()
       | _ -> None)
     (fun () -> Sc_rollup_max_number_of_available_messages_reached) ;
+  register_error_kind
+    `Temporary
+    ~id:"Sc_rollup_timeout_level_not_reached"
+    ~title:"Attempt to timeout game too early"
+    ~description:"Attempt to timeout game too early"
+    Data_encoding.unit
+    (function Sc_rollup_timeout_level_not_reached -> Some () | _ -> None)
+    (fun () -> Sc_rollup_timeout_level_not_reached) ;
+  register_error_kind
+    `Temporary
+    ~id:"Sc_rollup_no_game"
+    ~title:"Refutation game does not exist"
+    ~description:"Refutation game does not exist"
+    Data_encoding.unit
+    (function Sc_rollup_no_game -> Some () | _ -> None)
+    (fun () -> Sc_rollup_no_game) ;
+  register_error_kind
+    `Temporary
+    ~id:"Sc_rollup_wrong_turn"
+    ~title:"Attempt to play move but not staker's turn"
+    ~description:"Attempt to play move but not staker's turn"
+    Data_encoding.unit
+    (function Sc_rollup_wrong_turn -> Some () | _ -> None)
+    (fun () -> Sc_rollup_wrong_turn) ;
   let description = "Already staked." in
   register_error_kind
     `Temporary
@@ -762,16 +779,65 @@ let get_or_init_game ctxt rollup refuter defender =
       let* (parent, ctxt) =
         get_commitment_internal ctxt rollup commit.predecessor
       in
-      let game = Sc_rollup_repr.Game.initial parent refuter defender commit in
+      let game = Sc_rollup_repr.Game.initial parent commit refuter defender in
       let* (ctxt, _) = Store.Game.init (ctxt, rollup) stakers game in
       let* (ctxt, _) =
         Store.Game_timeout.init (ctxt, rollup) stakers (timeout_level ctxt)
       in
       return (game, ctxt)
 
-(* XXX implement *)
-let update_game _ctxt _rollup _stakers _update_fn = fail Not_implemented
+let update_game ctxt rollup refuter defender update_fn =
+  let open Lwt_tzresult_syntax in
+  let (alice, bob) = Sc_rollup_repr.Game.Index.normalize (refuter, defender) in
+  let* (game, ctxt) = get_or_init_game ctxt rollup refuter defender in
+  let* _ =
+    match game.turn with
+    | Alice ->
+        if Sc_rollup_repr.Staker.equal alice refuter then return ()
+        else fail Sc_rollup_wrong_turn
+    | Bob ->
+        if Sc_rollup_repr.Staker.equal bob refuter then return ()
+        else fail Sc_rollup_wrong_turn
+  in
+  match update_fn game with
+  | Either.Left outcome ->
+      let* (ctxt, _, _) = Store.Game.remove (ctxt, rollup) (alice, bob) in
+      let* (ctxt, _, _) =
+        Store.Game_timeout.remove (ctxt, rollup) (alice, bob)
+      in
+      return (Some outcome, ctxt)
+  | Either.Right new_game ->
+      let* (ctxt, _) = Store.Game.update (ctxt, rollup) (alice, bob) new_game in
+      let* (ctxt, _) =
+        Store.Game_timeout.update
+          (ctxt, rollup)
+          (alice, bob)
+          (timeout_level ctxt)
+      in
+      return (None, ctxt)
 
-let apply_outcome _ctxt _outcome = fail Not_implemented
+let apply_outcome ctxt rollup outcome =
+  let open Lwt_tzresult_syntax in
+  match outcome with
+  | Sc_rollup_repr.Game.SlashStaker staker -> remove_staker ctxt rollup staker
+  | Sc_rollup_repr.Game.SlashBothStakers (alice, bob) ->
+      let* ctxt = remove_staker ctxt rollup alice in
+      let* ctxt = remove_staker ctxt rollup bob in
+      return ctxt
 
-let timeout _ctxt _rollup _staker = fail Not_implemented
+let timeout ctxt rollup stakers =
+  let open Lwt_tzresult_syntax in
+  let level = (Raw_context.current_level ctxt).level in
+  let (alice, bob) = Sc_rollup_repr.Game.Index.normalize stakers in
+  let* (ctxt, game) = Store.Game.find (ctxt, rollup) (alice, bob) in
+  match game with
+  | None -> fail Sc_rollup_no_game
+  | Some game ->
+      let* (ctxt, timeout_level) =
+        Store.Game_timeout.get (ctxt, rollup) (alice, bob)
+      in
+      if Raw_level_repr.(level > timeout_level) then
+        match game.turn with
+        | Alice -> return (Sc_rollup_repr.Game.SlashStaker alice, ctxt)
+        | Bob -> return (Sc_rollup_repr.Game.SlashStaker bob, ctxt)
+      else fail Sc_rollup_timeout_level_not_reached
