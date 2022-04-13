@@ -1496,9 +1496,9 @@ module View_helpers = struct
      Script_typed_ir.Internal_operation
        {
          operation =
-           Transaction
+           Transaction_to_contract
              {
-               destination = Contract destination;
+               contract;
                unparsed_parameters;
                entrypoint = _;
                amount = _;
@@ -1510,7 +1510,7 @@ module View_helpers = struct
          nonce = _;
        };
     ]
-      when Contract.equal destination callback ->
+      when Contract.equal contract callback ->
         ok unparsed_parameters
     | [] ->
         Environment.Error_monad.error

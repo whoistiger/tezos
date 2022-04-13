@@ -515,15 +515,15 @@ let transfer (ctxt, sc) gas amount location parameters_ty parameters destination
       Destination.t ->
       (Kind.transaction manager_operation * context) tzresult =
    fun ctxt tp unparsed_parameters -> function
-    | Contract _ ->
+    | Contract contract ->
         Gas.consume ctxt (Script.strip_locations_cost unparsed_parameters)
         >|? fun ctxt ->
         let unparsed_parameters =
           Micheline.strip_locations unparsed_parameters
         in
-        ( Transaction
+        ( Transaction_to_contract
             {
-              destination;
+              contract;
               amount;
               entrypoint;
               location;
@@ -543,7 +543,7 @@ let transfer (ctxt, sc) gas amount location parameters_ty parameters destination
        rollup to inject the exact type of the entrypoint as used by
        the smart contract. This allows the transaction rollup to extract
        the type of the ticket. *)
-    | Tx_rollup _ -> (
+    | Tx_rollup dst_rollup -> (
         match tp with
         | Pair_t (Ticket_t (tp, _), _, _, _) ->
             Script_ir_translator.unparse_ty
@@ -559,9 +559,9 @@ let transfer (ctxt, sc) gas amount location parameters_ty parameters destination
             let unparsed_parameters =
               Micheline.strip_locations unparsed_parameters
             in
-            ( Transaction
+            ( Transaction_to_tx_rollup
                 {
-                  destination;
+                  dst_rollup;
                   amount;
                   entrypoint;
                   location;
