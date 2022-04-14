@@ -256,24 +256,16 @@ let tickets_of_operation ctxt
         ~parameters_ty
         ~parameters
   | Transaction_to_tx_rollup
-      {
-        dst_rollup;
-        unparsed_parameters = _;
-        entrypoint;
-        parameters_ty;
-        parameters;
-      } ->
-      if Entrypoint.(entrypoint = Tx_rollup.deposit_entrypoint) then
-        Tx_rollup_parameters.get_deposit_parameters parameters_ty parameters
-        >>?= fun {ex_ticket; l2_destination = _} ->
-        return
-          ( Some
-              {
-                destination = Destination.Tx_rollup dst_rollup;
-                tickets = [ex_ticket];
-              },
-            ctxt )
-      else return (None, ctxt)
+      {dst_rollup; unparsed_parameters = _; parameters_ty; parameters} ->
+      Tx_rollup_parameters.get_deposit_parameters parameters_ty parameters
+      >>?= fun {ex_ticket; l2_destination = _} ->
+      return
+        ( Some
+            {
+              destination = Destination.Tx_rollup dst_rollup;
+              tickets = [ex_ticket];
+            },
+          ctxt )
   | Origination
       {
         origination = {delegate = _; script = _; credit = _};
