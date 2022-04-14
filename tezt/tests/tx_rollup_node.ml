@@ -421,10 +421,12 @@ let build_rejection ~tx_level ~tx_node ~message_pos ~client ?agreed_context_hash
     Lwt_list.map_p
       (fun content ->
         let message = content.Rollup_node.Inbox.message in
-        let buffer = `Hex JSON.(message |-> "batch" |> as_string) in
-        let*! message_hash =
-          Rollup.message_hash ~message:(`Batch buffer) client
+        let message =
+          match JSON.(message |-> "batch" |> as_string_opt) with
+          | Some content -> `Batch (`Hex content)
+          | None -> `Deposit JSON.(message |-> "deposit")
         in
+        let*! message_hash = Rollup.message_hash ~message client in
         return message_hash)
       rollup_inbox.contents
   in

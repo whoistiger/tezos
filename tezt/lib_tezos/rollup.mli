@@ -62,9 +62,13 @@ module Tx_rollup : sig
     finalized_at : int option;
   }
 
-  type message = [`Batch of Hex.t]
+  type batch = [`Batch of Hex.t]
 
-  val make_batch : string -> message
+  type deposit = [`Deposit of JSON.t]
+
+  type message = [batch | deposit]
+
+  val make_batch : string -> [> batch]
 
   val get_state :
     ?hooks:Process.hooks -> rollup:string -> Client.t -> state Runnable.process

@@ -86,7 +86,11 @@ module Tx_rollup = struct
     finalized_at : int option;
   }
 
-  type message = [`Batch of Hex.t]
+  type batch = [`Batch of Hex.t]
+
+  type deposit = [`Deposit of JSON.t]
+
+  type message = [deposit | batch]
 
   let make_batch batch = `Batch (Hex.of_string batch)
 
@@ -174,9 +178,15 @@ module Tx_rollup = struct
       ~pkh
       client
 
-  let message_hash ?hooks ~message:(`Batch (`Hex message) : message) client =
+  let message_hash ?hooks ~(message : message) client =
     let parse json = `Hash JSON.(json |-> "hash" |> as_string) in
-    let data : JSON.u = `O [("message", `O [("batch", `String message)])] in
+    let data : JSON.u =
+      match message with
+      | `Batch (`Hex message) ->
+          `O [("message", `O [("batch", `String message)])]
+      | `Deposit json ->
+          `O [("message", `O [("deposit", JSON.unannotate json)])]
+    in
     RPC.Tx_rollup.Forge.Inbox.message_hash ?hooks ~data client
     |> Runnable.map parse
 
@@ -270,10 +280,17 @@ module Tx_rollup = struct
         inbox_length = List.length messages;
         cumulated_size =
           List.map
-            (fun (`Batch (`Hex message)) ->
-              (* In the Hex reprensatated as a string, a byte is
-                 encoded using two characters. *)
-              String.length message / 2)
+            (function
+              | `Batch (`Hex message) ->
+                  (* In the Hex reprensatated as a string, a byte is
+                     encoded using two characters. *)
+                  String.length message / 2
+              | `Deposit _json ->
+                  let sender_size = 48 in
+                  let destination_size = 20 in
+                  let key_hash_size = 32 in
+                  let amount_size = 8 in
+                  sender_size + destination_size + key_hash_size + amount_size)
             messages
           |> List.fold_left ( + ) 0;
         merkle_root;

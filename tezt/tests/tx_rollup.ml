@@ -193,8 +193,8 @@ module Regressions = struct
         ~tags:["tx_rollup"; "rpc"; "inbox"; "message"]
       @@ fun protocol ->
       let* (_node, client) = Client.init_with_protocol `Client ~protocol () in
-      let message = Rollup.make_batch "blob" in
-      let*! _hash = Rollup.message_hash ~hooks ~message client in
+      let batch = Rollup.make_batch "blob" in
+      let*! _hash = Rollup.message_hash ~hooks ~message:batch client in
       unit
 
     let rpc_inbox_merkle_tree_hash =
@@ -722,7 +722,10 @@ let submit_three_batches_and_check_size ~rollup ~tezos_level ~tx_level node
   let* _ = Node.wait_for_level node tezos_level in
   (* Check the inbox has been created, with the expected cumulated size. *)
   let* expected_inbox =
-    Rollup.compute_inbox_from_messages ~hooks messages client
+    Rollup.compute_inbox_from_messages
+      ~hooks
+      (messages :> Rollup.message list)
+      client
   in
   let*! inbox = Rollup.get_inbox ~hooks ~rollup ~level:tx_level client in
   Check.(
