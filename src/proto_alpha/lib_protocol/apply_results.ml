@@ -96,12 +96,12 @@ let contents_of_internal_operation (type kind)
             entrypoint;
             parameters = Script.lazy_expr unparsed_parameters;
           }
-    | Transaction_to_tx_rollup
-        {dst_rollup; amount; entrypoint; unparsed_parameters; _} ->
+    | Transaction_to_tx_rollup {dst_rollup; entrypoint; unparsed_parameters; _}
+      ->
         Transaction
           {
             destination = Tx_rollup dst_rollup;
-            amount;
+            amount = Tez.zero;
             entrypoint;
             parameters = Script.lazy_expr unparsed_parameters;
           }

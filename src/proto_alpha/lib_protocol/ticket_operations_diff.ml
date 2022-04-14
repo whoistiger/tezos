@@ -260,7 +260,6 @@ let tickets_of_operation ctxt
         dst_rollup;
         unparsed_parameters = _;
         entrypoint;
-        amount = _;
         parameters_ty;
         parameters;
       } ->
