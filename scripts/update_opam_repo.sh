@@ -127,7 +127,7 @@ OPAMSOLVERTIMEOUT=600 opam admin filter --yes --resolve \
 
 
 ## Adding useful compiler variants
-for variant in afl flambda fp spacetime ; do
+for variant in afl flambda fp ; do
     git checkout packages/ocaml-option-$variant/ocaml-option-$variant.1
 done
 
