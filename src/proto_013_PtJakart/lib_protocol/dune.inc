@@ -605,7 +605,7 @@ include Tezos_raw_protocol_013_PtJakart.Main
  (libraries tezos_protocol_environment_013_PtJakart)
  (library_flags (:standard -linkall))
  (flags (:standard -nopervasives -nostdlib
-                   -w +a-4-40..42-44-45-48
+                   -w +a-4-40..42-44-45-48-51-70
                    -warn-error +a
                    -open Tezos_protocol_environment_013_PtJakart__Environment
                    -open Pervasives
@@ -804,7 +804,7 @@ include Tezos_raw_protocol_013_PtJakart.Main
       tezos-protocol-environment
       tezos-protocol-environment.sigs
       tezos_raw_protocol_013_PtJakart)
- (flags -w "+a-4-40..42-44-45-48"
+ (flags -w "+a-4-40..42-44-45-48-51-70"
         -warn-error "+a"
         -nopervasives)
  (modules Protocol))
@@ -819,7 +819,7 @@ include Tezos_raw_protocol_013_PtJakart.Main
       tezos-protocol-environment
       tezos-protocol-environment.sigs
       tezos-protocol-013-PtJakart.raw)
- (flags -w "+a-4-40..42-44-45-48"
+ (flags -w "+a-4-40..42-44-45-48-51-70"
         -warn-error "+a"
         -nopervasives)
  (modules Functor))
@@ -832,7 +832,7 @@ include Tezos_raw_protocol_013_PtJakart.Main
  (libraries tezos-protocol-013-PtJakart
             tezos-protocol-updater
             tezos-protocol-environment)
- (flags (:standard -w +a-4-40..42-44-45-48
+ (flags (:standard -w +a-4-40..42-44-45-48-51-70
                    -warn-error +a))
  (modules Registerer))
 

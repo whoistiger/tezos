@@ -1775,6 +1775,7 @@ let tezos_protocol_compiler_native =
                   S "dune_protocol.v1";
                   S "dune_protocol.template.v0";
                   S "dune_protocol.template.v1";
+                  S "dune_protocol.template.v2";
                   S "final_protocol_versions";
                 ];
             ]

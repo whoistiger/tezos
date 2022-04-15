@@ -9,10 +9,10 @@
 ; generated from src/lib_protocol_compiler/dune_protocol.template.v1
 
 ; This template is intended for protocols written after the Tezos
-; project start using OCaml 4.12.
+; project start using OCaml 4.14.
 ;
 ; template.v1 was introduced when we bumped the version of our OCaml
-; dependency to 4.12.  This change to a newer OCaml version introduced
+; dependency to 4.14.  This change to a newer OCaml version introduced
 ; new warnings that need to be ignored in the protocols written before
 ; the update (see dune_protocol.template.v0).
 
@@ -605,7 +605,7 @@ include Tezos_raw_protocol_alpha.Main
  (libraries tezos_protocol_environment_alpha)
  (library_flags (:standard -linkall))
  (flags (:standard -nopervasives -nostdlib
-                   -w +a-4-40..42-44-45-48
+                   -w +a-4-40..42-44-45-48-70
                    -warn-error +a
                    -open Tezos_protocol_environment_alpha__Environment
                    -open Pervasives
@@ -804,7 +804,7 @@ include Tezos_raw_protocol_alpha.Main
       tezos-protocol-environment
       tezos-protocol-environment.sigs
       tezos_raw_protocol_alpha)
- (flags -w "+a-4-40..42-44-45-48"
+ (flags -w "+a-4-40..42-44-45-48-70"
         -warn-error "+a"
         -nopervasives)
  (modules Protocol))
@@ -819,7 +819,7 @@ include Tezos_raw_protocol_alpha.Main
       tezos-protocol-environment
       tezos-protocol-environment.sigs
       tezos-protocol-alpha.raw)
- (flags -w "+a-4-40..42-44-45-48"
+ (flags -w "+a-4-40..42-44-45-48-70"
         -warn-error "+a"
         -nopervasives)
  (modules Functor))
@@ -832,7 +832,7 @@ include Tezos_raw_protocol_alpha.Main
  (libraries tezos-protocol-alpha
             tezos-protocol-updater
             tezos-protocol-environment)
- (flags (:standard -w +a-4-40..42-44-45-48
+ (flags (:standard -w +a-4-40..42-44-45-48-70
                    -warn-error +a))
  (modules Registerer))
 

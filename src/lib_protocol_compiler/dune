@@ -71,4 +71,5 @@
   dune_protocol.v1
   dune_protocol.template.v0
   dune_protocol.template.v1
+  dune_protocol.template.v2
   final_protocol_versions))
