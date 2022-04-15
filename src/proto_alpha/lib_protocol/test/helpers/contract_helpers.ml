@@ -80,8 +80,9 @@ let default_step_constants =
 (** Helper function that parses and types a script, its initial storage and
    parameters from strings. It then executes the typed script with the storage
    and parameter and returns the result. *)
-let run_script ctx ?logger ?(step_constants = default_step_constants) contract
-    ?(entrypoint = Entrypoint.default) ~storage ~parameter () =
+let run_script ctx ?logger ?(step_constants = default_step_constants)
+    ?(internal = false) contract ?(entrypoint = Entrypoint.default) ~storage
+    ~parameter () =
   let contract_expr = Expr.from_string contract in
   let storage_expr = Expr.from_string storage in
   let parameter_expr = Expr.from_string parameter in
@@ -97,7 +98,7 @@ let run_script ctx ?logger ?(step_constants = default_step_constants) contract
     ~cached_script:None
     ~entrypoint
     ~parameter:parameter_expr
-    ~internal:false
+    ~internal
   >>=?? fun res -> return res
 
 let originate_contract_from_string ~script ~storage ~source_contract ~baker
