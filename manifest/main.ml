@@ -185,8 +185,6 @@ let mtime_clock_os = external_sublib mtime "mtime.clock.os"
 
 let ocaml_migrate_parsetree = external_lib "ocaml-migrate-parsetree" V.True
 
-let ocamlformat = opam_only "ocamlformat" V.(exactly "0.18.0")
-
 let ocamlgraph = external_lib "ocamlgraph" V.True
 
 let ocplib_endian = external_lib ~js_compatible:true "ocplib-endian" V.True
@@ -196,8 +194,6 @@ let ocplib_endian_bigstring =
 
 let ocplib_ocamlres =
   external_lib ~opam:"ocp-ocamlres" "ocplib-ocamlres" V.(at_least "0.4")
-
-let ometrics = opam_only "ometrics" V.(at_least "0.1.3")
 
 let parsexp = external_lib ~js_compatible:true "parsexp" V.True
 
@@ -1142,8 +1138,6 @@ let tezos_tooling =
         bisect_ppx;
         (* These next are only used in the CI, we add this dependency so that
            it is added to tezos/opam-repository. *)
-        ocamlformat;
-        ometrics;
       ]
     ~dune:
       Dune.

@@ -239,31 +239,31 @@ EXCLUDE_NONPROTO_LIBS_DIR := $(addprefix --exclude-file ,${NONPROTO_LIBS_DIR})
 PROTO_LIBS_DIR = $(addsuffix /,${PROTO_LIBS})
 EXCLUDE_PROTO_LIBS_DIR := $(addprefix --exclude-file ,${PROTO_LIBS_DIR})
 
-.PHONY: lint-ometrics
-lint-ometrics:
-	@echo "Running ometrics analysis in your changes."
-	@ometrics check ${EXCLUDE_NONPROTO_LIBS_DIR} ${EXCLUDE_PROTO_LIBS_DIR} \
-        --exclude-file "src/proto_alpha/lib_protocol/alpha_context.mli" \
-        --exclude-file "src/proto_alpha/lib_protocol/alpha_context.ml" \
-        --exclude-file "tezt/tests/" \
-        --exclude-entry-re "pp\|pp_.+" \
-        --exclude-entry-re "encoding\|encoding_.+\|.+_encoding" \
-        --exclude-entry-re "compare\|compare_.+\|.+_compare"
+#.PHONY: lint-ometrics
+#lint-ometrics:
+#	@echo "Running ometrics analysis in your changes."
+#	@ometrics check ${EXCLUDE_NONPROTO_LIBS_DIR} ${EXCLUDE_PROTO_LIBS_DIR} \
+#        --exclude-file "src/proto_alpha/lib_protocol/alpha_context.mli" \
+#        --exclude-file "src/proto_alpha/lib_protocol/alpha_context.ml" \
+#        --exclude-file "tezt/tests/" \
+#        --exclude-entry-re "pp\|pp_.+" \
+#        --exclude-entry-re "encoding\|encoding_.+\|.+_encoding" \
+#        --exclude-entry-re "compare\|compare_.+\|.+_compare"
 
-.PHONY: lint-ometric-gitlab
-lint-ometrics-gitlab:
-	@echo "Running ometrics analysis in your changes."
-	@mkdir -p _reports
-	@ometrics check-clone ${OMETRICS_GIT} --branch ${OMETRICS_BRANCH} \
-        ${EXCLUDE_NONPROTO_LIBS_DIR} ${EXCLUDE_PROTO_LIBS_DIR} \
-        --exclude-file "src/proto_alpha/lib_protocol/alpha_context.mli" \
-        --exclude-file "src/proto_alpha/lib_protocol/alpha_context.ml" \
-        --exclude-file "tezt/tests/" \
-        --exclude-entry-re "pp\|pp_.+" \
-        --exclude-entry-re "encoding\|encoding_.+\|.+_encoding" \
-        --exclude-entry-re "compare\|compare_.+\|.+_compare" \
-        --gitlab --output ${CODE_QUALITY_REPORT}
-	@echo "Report should be available in file://$(shell pwd)/${CODE_QUALITY_REPORT}"
+#.PHONY: lint-ometric-gitlab
+#lint-ometrics-gitlab:
+#	@echo "Running ometrics analysis in your changes."
+#	@mkdir -p _reports
+#	@ometrics check-clone ${OMETRICS_GIT} --branch ${OMETRICS_BRANCH} \
+#        ${EXCLUDE_NONPROTO_LIBS_DIR} ${EXCLUDE_PROTO_LIBS_DIR} \
+#        --exclude-file "src/proto_alpha/lib_protocol/alpha_context.mli" \
+#        --exclude-file "src/proto_alpha/lib_protocol/alpha_context.ml" \
+#        --exclude-file "tezt/tests/" \
+#        --exclude-entry-re "pp\|pp_.+" \
+#        --exclude-entry-re "encoding\|encoding_.+\|.+_encoding" \
+#        --exclude-entry-re "compare\|compare_.+\|.+_compare" \
+#        --gitlab --output ${CODE_QUALITY_REPORT}
+#	@echo "Report should be available in file://$(shell pwd)/${CODE_QUALITY_REPORT}"
 
 .PHONY: test
 test: lint-opam-dune test-code
@@ -272,8 +272,8 @@ test: lint-opam-dune test-code
 
 check-linting:
 	@src/tooling/lint.sh --check-scripts
-	@src/tooling/lint.sh --check-ocamlformat
-	@dune build --profile=$(PROFILE) @fmt
+	#@src/tooling/lint.sh --check-ocamlformat
+	#@dune build --profile=$(PROFILE) @fmt
 
 check-python-linting:
 	@$(MAKE) -C tests_python lint
