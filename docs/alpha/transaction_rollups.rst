@@ -558,3 +558,46 @@ to a dedicated RPC of the ``tezos-node``.
 .. code:: sh
 
     tezos-client rpc get /chains/main/blocks/<block>/context/tx_rollup/<transaction rollup address>/inbox/<offset>
+
+Starting a Rollup Node
+**********************
+
+Octez does **not** provide an official transaction rollup node. That
+being said, an experimental transaction rollup node is under
+development, mostly for testing and demonstration purposes.
+
+To get the experimental transaction rollup node, one can build it from
+source. In addition to the `official procedure
+<https://tezos.gitlab.io/introduction/howtoget.html#compiling-with-make>`_,
+the following command has to be called.
+
+.. code:: sh
+
+    make build-unreleased
+
+This will make the ``tezos-tx-rollup-node-alpha`` available at the
+root of the repository.
+
+The first step towards being able to use the experimental transaction
+rollup node is to prepare its configuration file.
+
+.. code:: sh
+
+    tezos-tx-rollup-node-alpha config init on --data-dir DATA_DIR --rollup-id TX_ROLLUP_ADDRESS --rollup-genesis L1_BLOCK --rpc-addr RPC_ADDR
+
+For instance,
+
+.. code:: sh
+
+    tezos-tx-rollup-node-alpha config init on --data-dir /tmp/dailynet-tx/ --rollup-id txr1U1sioU2rai7GFSxEBPba3bAZ1eLMF58C5 --rollup-genesis BLDtQgCA5nDLuU9RbXkF8FE23fqi4GUXUoRq7LypQSLL6c7FJ3F --rpc-addr 127.0.0.1:9999
+
+will create a configuration file in ``/tmp/dailynet-tx``, for the
+transaction rollup ``txr1U1sioU2rai7GFSxEBPba3bAZ1eLMF58C5`` that has
+been originated in the layer-1 block
+``BLDtQgCA5nDLuU9RbXkF8FE23fqi4GUXUoRq7LypQSLL6c7FJ3F``.
+
+Once the configuration is ready, starting the rollup node is as simple as
+
+.. code:: sh
+
+    tezos-tx-rollup-node-alpha run --data-dir DATA_DIR
