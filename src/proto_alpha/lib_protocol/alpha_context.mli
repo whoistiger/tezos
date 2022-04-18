@@ -3374,9 +3374,15 @@ module Parameters : sig
     script : Script.t;
   }
 
+  type bootstrap_delegation = {
+    from_pkh : public_key_hash;
+    to_pkh : public_key_hash;
+  }
+
   type t = {
     bootstrap_accounts : bootstrap_account list;
     bootstrap_contracts : bootstrap_contract list;
+    bootstrap_delegations : bootstrap_delegation list;
     commitments : Commitment.t list;
     constants : Constants.Parametric.t;
     security_deposit_ramp_up_cycles : int option;

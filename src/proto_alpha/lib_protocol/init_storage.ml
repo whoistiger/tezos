@@ -93,6 +93,7 @@ let prepare_first_block ctxt ~typecheck ~level ~timestamp =
       Bootstrap_storage.init
         ctxt
         ~typecheck
+        ~bootstrap_delegations:param.bootstrap_delegations
         ?no_reward_cycles:param.no_reward_cycles
         param.bootstrap_accounts
         param.bootstrap_contracts

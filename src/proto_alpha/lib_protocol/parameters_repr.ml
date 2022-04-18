@@ -36,9 +36,15 @@ type bootstrap_contract = {
   script : Script_repr.t;
 }
 
+type bootstrap_delegation = {
+  from_pkh : Signature.Public_key_hash.t;
+  to_pkh : Signature.Public_key_hash.t;
+}
+
 type t = {
   bootstrap_accounts : bootstrap_account list;
   bootstrap_contracts : bootstrap_contract list;
+  bootstrap_delegations : bootstrap_delegation list;
   commitments : Commitment_repr.t list;
   constants : Constants_parametric_repr.t;
   security_deposit_ramp_up_cycles : int option;
@@ -89,12 +95,22 @@ let bootstrap_contract_encoding =
        (req "amount" Tez_repr.encoding)
        (req "script" Script_repr.encoding))
 
+let bootstrap_delegation_encoding =
+  let open Data_encoding in
+  conv
+    (fun {from_pkh; to_pkh} -> (from_pkh, to_pkh))
+    (fun (from_pkh, to_pkh) -> {from_pkh; to_pkh})
+    (obj2
+       (req "from_pkh" Signature.Public_key_hash.encoding)
+       (req "to_pkh" Signature.Public_key_hash.encoding))
+
 let encoding =
   let open Data_encoding in
   conv
     (fun {
            bootstrap_accounts;
            bootstrap_contracts;
+           bootstrap_delegations;
            commitments;
            constants;
            security_deposit_ramp_up_cycles;
@@ -102,12 +118,14 @@ let encoding =
          } ->
       ( ( bootstrap_accounts,
           bootstrap_contracts,
+          bootstrap_delegations,
           commitments,
           security_deposit_ramp_up_cycles,
           no_reward_cycles ),
         constants ))
     (fun ( ( bootstrap_accounts,
              bootstrap_contracts,
+             bootstrap_delegations,
              commitments,
              security_deposit_ramp_up_cycles,
              no_reward_cycles ),
@@ -115,15 +133,17 @@ let encoding =
       {
         bootstrap_accounts;
         bootstrap_contracts;
+        bootstrap_delegations;
         commitments;
         constants;
         security_deposit_ramp_up_cycles;
         no_reward_cycles;
       })
     (merge_objs
-       (obj5
+       (obj6
           (req "bootstrap_accounts" (list bootstrap_account_encoding))
           (dft "bootstrap_contracts" (list bootstrap_contract_encoding) [])
+          (dft "bootstrap_delegations" (list bootstrap_delegation_encoding) [])
           (dft "commitments" (list Commitment_repr.encoding) [])
           (opt "security_deposit_ramp_up_cycles" int31)
           (opt "no_reward_cycles" int31))

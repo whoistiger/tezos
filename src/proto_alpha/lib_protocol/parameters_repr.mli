@@ -41,11 +41,17 @@ type bootstrap_contract = {
   script : Script_repr.t;
 }
 
+type bootstrap_delegation = {
+  from_pkh : Signature.Public_key_hash.t;
+  to_pkh : Signature.Public_key_hash.t;
+}
+
 (** Protocol parameters define some constants regulating behaviour of the
     chain. *)
 type t = {
   bootstrap_accounts : bootstrap_account list;
   bootstrap_contracts : bootstrap_contract list;
+  bootstrap_delegations : bootstrap_delegation list;
   commitments : Commitment_repr.t list;
   constants : Constants_parametric_repr.t;
   security_deposit_ramp_up_cycles : int option;

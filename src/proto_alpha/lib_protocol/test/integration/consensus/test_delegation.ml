@@ -284,6 +284,27 @@ let undelegated_originated_bootstrap_contract () =
   | None -> return_unit
   | Some _ -> failwith "Bootstrap contract should be undelegated (%s)" __LOC__
 
+let delegated_implicit_bootstrap_contract () =
+  let from_pkh =
+    Signature.Public_key_hash.of_b58check_exn
+      "tz1TDZG4vFoA2xutZMYauUnS4HVucnAGQSpZ"
+  in
+  let to_pkh =
+    Signature.Public_key_hash.of_b58check_exn
+      "tz1MBWU1WkszFfkEER2pgn4ATKXE9ng7x1sR"
+  in
+  let delegation1 : Parameters.bootstrap_delegation = {from_pkh; to_pkh} in
+  let bootstrap_delegations = [delegation1] in
+  let rng_state = Random.State.make [|0|] in
+  Context.init2 ~rng_state ~bootstrap_delegations ()
+  >>=? fun (b, (contract1, _contract2)) ->
+  Block.bake b >>=? fun b ->
+  Context.Contract.delegate_opt (B b) contract1 >>=? fun delegate0 ->
+  match delegate0 with
+  | Some contract when contract = to_pkh -> return_unit
+  | Some _ | None ->
+      failwith "Bootstrap contract should be delegated (%s)" __LOC__
+
 let tests_bootstrap_contracts =
   [
     Tztest.tztest
@@ -353,6 +374,10 @@ let tests_bootstrap_contracts =
       "originated bootstrap contract can be undelegated"
       `Quick
       undelegated_originated_bootstrap_contract;
+    Tztest.tztest
+      "originated bootstrap contract can be delegated"
+      `Quick
+      delegated_implicit_bootstrap_contract;
   ]
 
 (*****************************************************************************)

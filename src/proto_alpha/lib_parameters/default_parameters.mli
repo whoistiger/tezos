@@ -41,6 +41,7 @@ val make_bootstrap_account :
 val parameters_of_constants :
   ?bootstrap_accounts:Parameters.bootstrap_account list ->
   ?bootstrap_contracts:Parameters.bootstrap_contract list ->
+  ?bootstrap_delegations:Parameters.bootstrap_delegation list ->
   ?commitments:Commitment.t list ->
   Constants.Parametric.t ->
   Parameters.t

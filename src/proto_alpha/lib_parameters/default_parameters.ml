@@ -283,11 +283,13 @@ let make_bootstrap_account (pkh, pk, amount) =
   Parameters.{public_key_hash = pkh; public_key = Some pk; amount}
 
 let parameters_of_constants ?(bootstrap_accounts = bootstrap_accounts)
-    ?(bootstrap_contracts = []) ?(commitments = []) constants =
+    ?(bootstrap_contracts = []) ?(bootstrap_delegations = [])
+    ?(commitments = []) constants =
   Parameters.
     {
       bootstrap_accounts;
       bootstrap_contracts;
+      bootstrap_delegations;
       commitments;
       constants;
       security_deposit_ramp_up_cycles = None;

@@ -31,6 +31,7 @@ val init :
     ((Script_repr.t * Lazy_storage_diff.diffs option) * Raw_context.t) tzresult
     Lwt.t) ->
   ?no_reward_cycles:int ->
+  ?bootstrap_delegations:Parameters_repr.bootstrap_delegation list ->
   Parameters_repr.bootstrap_account list ->
   Parameters_repr.bootstrap_contract list ->
   (Raw_context.t * Receipt_repr.balance_updates) tzresult Lwt.t

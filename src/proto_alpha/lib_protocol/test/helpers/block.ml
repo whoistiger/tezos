@@ -271,8 +271,8 @@ let check_constants_consistency constants =
         "Inconsistent constants : blocks per cycle must be superior than \
          blocks per roll snapshot")
 
-let prepare_main_init_params ?bootstrap_contracts commitments constants
-    initial_accounts =
+let prepare_main_init_params ?bootstrap_contracts ?bootstrap_delegations
+    commitments constants initial_accounts =
   let open Tezos_protocol_alpha_parameters in
   let bootstrap_accounts =
     List.map
@@ -284,6 +284,7 @@ let prepare_main_init_params ?bootstrap_contracts commitments constants
     Default_parameters.parameters_of_constants
       ~bootstrap_accounts
       ?bootstrap_contracts
+      ?bootstrap_delegations
       ~commitments
       constants
   in
@@ -296,10 +297,11 @@ let prepare_main_init_params ?bootstrap_contracts commitments constants
     add empty ["version"] (Bytes.of_string "genesis") >>= fun ctxt ->
     add ctxt protocol_param_key proto_params)
 
-let initial_context ?(commitments = []) ?bootstrap_contracts constants header
-    initial_accounts =
+let initial_context ?(commitments = []) ?bootstrap_contracts
+    ?bootstrap_delegations constants header initial_accounts =
   prepare_main_init_params
     ?bootstrap_contracts
+    ?bootstrap_delegations
     commitments
     constants
     initial_accounts
@@ -534,11 +536,11 @@ let prepare_initial_context_params ?consensus_threshold ?min_proposal_quorum
 (* if no parameter file is passed we check in the current directory
    where the test is run *)
 let genesis ?commitments ?consensus_threshold ?min_proposal_quorum
-    ?bootstrap_contracts ?level ?cost_per_byte ?liquidity_baking_subsidy
-    ?endorsing_reward_per_slot ?baking_reward_bonus_per_slot
-    ?baking_reward_fixed_portion ?origination_size ?blocks_per_cycle
-    ?cycles_per_voting_period ?tx_rollup_enable ?tx_rollup_sunset_level
-    ?tx_rollup_origination_size ?sc_rollup_enable
+    ?bootstrap_contracts ?bootstrap_delegations ?level ?cost_per_byte
+    ?liquidity_baking_subsidy ?endorsing_reward_per_slot
+    ?baking_reward_bonus_per_slot ?baking_reward_fixed_portion ?origination_size
+    ?blocks_per_cycle ?cycles_per_voting_period ?tx_rollup_enable
+    ?tx_rollup_sunset_level ?tx_rollup_origination_size ?sc_rollup_enable
     (initial_accounts : (Account.t * Tez.t) list) =
   prepare_initial_context_params
     ?consensus_threshold
@@ -561,6 +563,7 @@ let genesis ?commitments ?consensus_threshold ?min_proposal_quorum
   initial_context
     ?commitments
     ?bootstrap_contracts
+    ?bootstrap_delegations
     constants
     shell
     initial_accounts

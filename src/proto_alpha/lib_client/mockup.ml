@@ -1155,11 +1155,24 @@ module Bootstrap_contract = struct
          (req "script" Script.encoding))
 end
 
+module Bootstrap_delegation = struct
+  let encoding : Parameters.bootstrap_delegation Data_encoding.t =
+    let open Data_encoding in
+    let open Parameters in
+    conv
+      (fun {from_pkh; to_pkh} -> (from_pkh, to_pkh))
+      (fun (from_pkh, to_pkh) -> {from_pkh; to_pkh})
+      (obj2
+         (req "from_pkh" Signature.Public_key_hash.encoding)
+         (req "to_pkh" Signature.Public_key_hash.encoding))
+end
+
 module Protocol_parameters = struct
   type t = {
     initial_timestamp : Time.Protocol.t;
     bootstrap_accounts : Parameters.bootstrap_account list;
     bootstrap_contracts : Parameters.bootstrap_contract list;
+    bootstrap_delegations : Parameters.bootstrap_delegation list;
     constants : Constants.Parametric.t;
   }
 
@@ -1170,16 +1183,25 @@ module Protocol_parameters = struct
         ( p.initial_timestamp,
           p.bootstrap_accounts,
           p.bootstrap_contracts,
+          p.bootstrap_delegations,
           p.constants ))
       (fun ( initial_timestamp,
              bootstrap_accounts,
              bootstrap_contracts,
+             bootstrap_delegations,
              constants ) ->
-        {initial_timestamp; bootstrap_accounts; bootstrap_contracts; constants})
-      (obj4
+        {
+          initial_timestamp;
+          bootstrap_accounts;
+          bootstrap_contracts;
+          bootstrap_delegations;
+          constants;
+        })
+      (obj5
          (req "initial_timestamp" Time.Protocol.encoding)
          (req "bootstrap_accounts" (list Bootstrap_account.encoding))
          (req "bootstrap_contracts" (list Bootstrap_contract.encoding))
+         (req "bootstrap_delegations" (list Bootstrap_delegation.encoding))
          (req "constants" Constants.Parametric.encoding))
 
   let default_value : t =
@@ -1191,6 +1213,7 @@ module Protocol_parameters = struct
       initial_timestamp = Time.Protocol.epoch;
       bootstrap_accounts = parameters.bootstrap_accounts;
       bootstrap_contracts = parameters.bootstrap_contracts;
+      bootstrap_delegations = parameters.bootstrap_delegations;
       constants = parameters.constants;
     }
 end
@@ -1267,12 +1290,19 @@ let endorsement_branch_data_encoding =
        (req "block_payload_hash" Protocol.Block_payload_hash.encoding))
 
 let initial_context chain_id (header : Block_header.shell_header)
-    ({bootstrap_accounts; bootstrap_contracts; constants; _} :
+    ({
+       bootstrap_accounts;
+       bootstrap_contracts;
+       bootstrap_delegations;
+       constants;
+       _;
+     } :
       Protocol_parameters.t) =
   let parameters =
     Default_parameters.parameters_of_constants
       ~bootstrap_accounts
       ~bootstrap_contracts
+      ~bootstrap_delegations
       ~commitments:[]
       constants
   in

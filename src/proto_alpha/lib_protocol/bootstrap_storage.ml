@@ -23,7 +23,7 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-let init_account (ctxt, balance_updates)
+let init_account (ctxt, balance_updates) ?(skip_delegation = false)
     ({public_key_hash; public_key; amount} : Parameters_repr.bootstrap_account)
     =
   let contract = Contract_repr.implicit_contract public_key_hash in
@@ -40,7 +40,9 @@ let init_account (ctxt, balance_updates)
         ctxt
         public_key_hash
         public_key
-      >>=? fun ctxt -> Delegate_storage.set ctxt contract (Some public_key_hash)
+      >>=? fun ctxt ->
+      if skip_delegation then return ctxt
+      else Delegate_storage.set ctxt contract (Some public_key_hash)
   | None -> return ctxt)
   >|=? fun ctxt -> (ctxt, new_balance_updates @ balance_updates)
 
@@ -64,11 +66,34 @@ let init_contract ~typecheck (ctxt, balance_updates)
   >|=? fun (ctxt, new_balance_updates) ->
   (ctxt, new_balance_updates @ balance_updates)
 
-let init ctxt ~typecheck ?no_reward_cycles accounts contracts =
+let init_delegation ctxt
+    ({from_pkh; to_pkh} : Parameters_repr.bootstrap_delegation) =
+  let contract = Contract_repr.implicit_contract from_pkh in
+  Delegate_storage.set ctxt contract (Some to_pkh)
+
+let init ctxt ~typecheck ?no_reward_cycles ?(bootstrap_delegations = [])
+    accounts contracts =
   let nonce = Operation_hash.hash_string ["Un festival de GADT."] in
   let ctxt = Raw_context.init_origination_nonce ctxt nonce in
-  List.fold_left_es init_account (ctxt, []) accounts
+  (* Create the accounts.  For accoutns which will delegate via bootstrap_delegations,
+     do not self-delegate. *)
+  List.fold_left_es
+    (fun (ctxt, balance_updates) account ->
+      let ({public_key_hash; _} : Parameters_repr.bootstrap_account) =
+        account
+      in
+      let skip_delegation =
+        Option.is_some
+        @@ List.find
+             (fun ({from_pkh; _} : Parameters_repr.bootstrap_delegation) ->
+               Signature.Public_key_hash.equal public_key_hash from_pkh)
+             bootstrap_delegations
+      in
+      init_account (ctxt, balance_updates) account ~skip_delegation)
+    (ctxt, [])
+    accounts
   >>=? fun (ctxt, balance_updates) ->
+  List.fold_left_es init_delegation ctxt bootstrap_delegations >>=? fun ctxt ->
   List.fold_left_es (init_contract ~typecheck) (ctxt, balance_updates) contracts
   >>=? fun (ctxt, balance_updates) ->
   (match no_reward_cycles with
