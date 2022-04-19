@@ -749,6 +749,13 @@ module Sc_rollup = struct
       ~sc_rollup_address client =
     let path = path ~chain ~block ~sc_rollup_address @ ["boot_sector"] in
     Client.rpc ?endpoint ?hooks GET path client
+
+  let get_lcc_hash_with_level ?endpoint ?hooks ?(chain = "main")
+      ?(block = "head") ~sc_rollup_address client =
+    let path =
+      path ~chain ~block ~sc_rollup_address @ ["lcc_hash_with_level"]
+    in
+    Client.rpc ?endpoint ?hooks GET path client
 end
 
 let raw_bytes ?endpoint ?hooks ?(chain = "main") ?(block = "head") ?(path = [])

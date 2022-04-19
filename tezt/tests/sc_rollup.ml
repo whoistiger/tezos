@@ -325,6 +325,51 @@ let test_rollup_get_initial_level =
         client
         bootstrap)
 
+(* Fetching the last cemented commitment info for a sc rollup
+   ----------------------------------------------------------
+
+  We can fetch the hash and level of the last cemented commitment. Initially, 
+  this corresponds to `(Sc_rollup.Commitment_hash.zero, origination_level)`.
+*)
+let test_rollup_get_lcc_hash_and_level =
+  let output_file _ = "sc_rollup_get_lcc_hash_and_level" in
+  test
+    ~__FILE__
+    ~output_file
+    ~tags:["lcc_hash_and_level"]
+    "get last cemented commitment hash and inbox level of a sc rollup"
+    (fun protocol ->
+      setup ~protocol @@ fun node client bootstrap ->
+      let* current_level = RPC.get_current_level client in
+      ( with_fresh_rollup @@ fun sc_rollup_address _sc_rollup_node _filename ->
+        (* Bake 10 blocks to be sure that the initial level of rollup is different
+           from the current level. *)
+        let rec bake_blocks n =
+          match n with
+          | 0 -> return ()
+          | _ ->
+              Lwt.bind (Client.bake_for client) (fun _ -> bake_blocks (n - 1))
+        in
+        let* _ = bake_blocks 10 in
+        let* lcc_hash_with_level =
+          RPC.Sc_rollup.get_lcc_hash_with_level ~sc_rollup_address client
+        in
+        let hash = JSON.as_string @@ JSON.get "hash" lcc_hash_with_level in
+        let level = JSON.as_int @@ JSON.get "level" lcc_hash_with_level in
+        (*TODO: check that this is indeed the zero hash for a commitment *)
+        Check.(
+          (hash = "scc12XhSULdV8bAav21e99VYLTpqAjTd7NU8Mn4zFdKPSA8auMbggG")
+            string
+            ~error_msg:"expected value %L, got %R") ;
+        Check.(
+          (level = (JSON.as_int @@ JSON.get "level" current_level) + 1)
+            int
+            ~error_msg:"expected value %L, got %R") ;
+        return () )
+        node
+        client
+        bootstrap)
+
 (* Pushing message in the inbox
    ----------------------------
 
@@ -1384,6 +1429,7 @@ let register ~protocols =
   test_rollup_client_gets_address protocols ;
   test_rollup_list protocols ;
   test_rollup_get_initial_level protocols ;
+  test_rollup_get_lcc_hash_and_level protocols ;
   test_rollup_inbox_size protocols ;
   test_rollup_inbox_current_messages_hash protocols ;
   test_rollup_inbox_of_rollup_node "basic" basic_scenario protocols ;

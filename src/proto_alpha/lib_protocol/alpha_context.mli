@@ -2639,6 +2639,9 @@ module Sc_rollup : sig
 
   val get_boot_sector : context -> t -> string tzresult Lwt.t
 
+  val lcc_hash_with_level :
+    context -> t -> (Commitment_hash.t * Raw_level.t * context) tzresult Lwt.t
+
   module Internal_for_tests : sig
     val originated_sc_rollup : Origination_nonce.Internal_for_tests.t -> t
   end

@@ -416,3 +416,14 @@ val initial_level :
 
 (** [get_boot_sector ctxt sc_rollup] retrieves the boot sector for [sc_rollup]. *)
 val get_boot_sector : Raw_context.t -> Sc_rollup_repr.t -> string tzresult Lwt.t
+
+(* [lcc_hash_with_level ctxt sc_rollup] returns the hash and level of the 
+   last cemented commitment for [sc_rollup]. If the rollup exists but 
+   no lcc exists, the initial commitment `Sc_rollup.Commitment.zero` 
+   together with the rollup origination level is returned.
+ *)
+val lcc_hash_with_level :
+  Raw_context.t ->
+  Sc_rollup_repr.t ->
+  (Sc_rollup_repr.Commitment_hash.t * Raw_level_repr.t * Raw_context.t) tzresult
+  Lwt.t
