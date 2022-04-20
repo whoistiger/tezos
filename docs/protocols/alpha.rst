@@ -33,6 +33,9 @@ RPC Changes
 
   ``/chains/<chain_id>/blocks/<block>/helpers/scripts/run_script_view``
 
+- Deprecated the endorsing_rights API for whole cycles.  The API will
+  still support per-cycle usage, but whole cycles are too expensive.
+
 Bug Fixes
 ---------
 
