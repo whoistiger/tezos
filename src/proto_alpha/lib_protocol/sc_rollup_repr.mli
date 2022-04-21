@@ -156,6 +156,12 @@ module Proof : sig
   val encoding : t Data_encoding.t
 
   val pp : Format.formatter -> t -> unit
+
+  val start_state : t -> State_hash.t
+
+  val stop_state : t -> State_hash.t option
+
+  val valid : t -> bool
 end
 
 (** The refutation game types are defined here, as well as the logic for
@@ -174,28 +180,18 @@ module Game : sig
 
       - [turn], the player that must provide the next move.
 
-      - [start_state/start_tick], the state the two players agree on.
-
-      - [stop_state/stop_tick], the state of the player who is not the
-        next to move.
-
-      - [current_dissection], a list of intermediate states. The current
+      - [dissection], a list of states with tick counts. The current
         player will specify, in the next move, a tick count that
-        represents the prefix list (possibly empty) of these
-        intermediate states she agrees with.
+        indicates the last of these states that she agrees with.
 
       Invariants:
       -----------
-      - [current_dissection] cannot be empty.
-      - [start_tick] is strictly less than [stop_tick].
+      - [dissection] must contain at least 3 values
+      - only the last value in [dissection] may be [None]
   *)
   type t = {
     turn : player;
-    start_state : State_hash.t;
-    start_tick : Sc_rollup_tick_repr.t;
-    stop_state : State_hash.t option;
-    stop_tick : Sc_rollup_tick_repr.t;
-    current_dissection : (State_hash.t * Sc_rollup_tick_repr.t) list;
+    dissection : (State_hash.t option * Sc_rollup_tick_repr.t) list;
   }
 
   (** Return the other player *)
@@ -248,7 +244,7 @@ module Game : sig
   (** A [step] in the game is either a new dissection (if there are
       intermediate ticks remaining to put in it) or a proof. *)
   type step =
-    | Dissection of (State_hash.t * Sc_rollup_tick_repr.t) list
+    | Dissection of (State_hash.t option * Sc_rollup_tick_repr.t) list
     | Proof of Proof.t
 
   (** A [refutation] is a move in the game. [choice] is the final tick
@@ -269,7 +265,10 @@ module Game : sig
   val reason_encoding : reason Data_encoding.t
 
   (** A type that represents the current game status in a way that is
-      useful to the outside world. Used in operation result types. *)
+      useful to the outside world (using actual [Staker.t] values
+      instead of the internal [player] type).
+
+      Used in operation result types. *)
   type status = Ongoing | Ended of (reason * Staker.t)
 
   val pp_status : Format.formatter -> status -> unit
@@ -286,6 +285,11 @@ module Game : sig
 
   val outcome_encoding : outcome Data_encoding.t
 
-  (** XXX: docstring *)
+  (** Applies the move [refutation] to the game. Checks the move is
+      valid and returns an [Invalid_move] outcome if not.
+      
+      In the case of the game continuing, this swaps the current
+      player and updates the [dissection]. In the case of a [Proof]
+      being provided this returns a [Conflict_resolved] outcome. *)
   val play : t -> refutation -> (outcome, t) Either.t
 end

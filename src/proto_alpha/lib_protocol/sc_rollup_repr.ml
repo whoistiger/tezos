@@ -365,6 +365,15 @@ module Proof = struct
 
   (* TODO #2759 *)
   let pp _ _ = ()
+
+  (* TODO #2759 *)
+  let start_state _ = State_hash.zero
+
+  (* TODO #2759 *)
+  let stop_state _ = None
+
+  (* TODO #2759 *)
+  let valid _ = true
 end
 
 module Game = struct
@@ -372,11 +381,7 @@ module Game = struct
 
   type t = {
     turn : player;
-    start_state : State_hash.t;
-    start_tick : Sc_rollup_tick_repr.t;
-    stop_state : State_hash.t option;
-    stop_tick : Sc_rollup_tick_repr.t;
-    current_dissection : (State_hash.t * Sc_rollup_tick_repr.t) list;
+    dissection : (State_hash.t option * Sc_rollup_tick_repr.t) list;
   }
 
   let player_encoding =
@@ -407,43 +412,14 @@ module Game = struct
   let encoding =
     let open Data_encoding in
     conv
-      (fun {
-             turn;
-             start_state;
-             start_tick;
-             stop_state;
-             stop_tick;
-             current_dissection;
-           } ->
-        ( turn,
-          start_state,
-          start_tick,
-          stop_state,
-          stop_tick,
-          current_dissection ))
-      (fun ( turn,
-             start_state,
-             start_tick,
-             stop_state,
-             stop_tick,
-             current_dissection ) ->
-        {
-          turn;
-          start_state;
-          start_tick;
-          stop_state;
-          stop_tick;
-          current_dissection;
-        })
-      (obj6
+      (fun {turn; dissection} -> (turn, dissection))
+      (fun (turn, dissection) -> {turn; dissection})
+      (obj2
          (req "turn" player_encoding)
-         (req "start_state" State_hash.encoding)
-         (req "start_tick" Sc_rollup_tick_repr.encoding)
-         (req "stop_state" (option State_hash.encoding))
-         (req "stop_tick" Sc_rollup_tick_repr.encoding)
          (req
-            "current_dissection"
-            (list (tup2 State_hash.encoding Sc_rollup_tick_repr.encoding))))
+            "dissection"
+            (list
+               (tup2 (option State_hash.encoding) Sc_rollup_tick_repr.encoding))))
 
   let pp_dissection ppf d =
     Format.pp_print_list
@@ -452,7 +428,7 @@ module Game = struct
         Format.fprintf
           ppf
           "  %a @ %a"
-          State_hash.pp
+          (Format.pp_print_option State_hash.pp)
           state
           Sc_rollup_tick_repr.pp
           tick)
@@ -462,17 +438,9 @@ module Game = struct
   let pp ppf game =
     Format.fprintf
       ppf
-      "%a @ %a -> %a @ %a [%a] %a playing"
-      State_hash.pp
-      game.start_state
-      Sc_rollup_tick_repr.pp
-      game.start_tick
-      (Format.pp_print_option State_hash.pp)
-      game.stop_state
-      Sc_rollup_tick_repr.pp
-      game.stop_tick
+      "[%a] %a playing"
       pp_dissection
-      game.current_dissection
+      game.dissection
       pp_player
       game.turn
 
@@ -533,17 +501,21 @@ module Game = struct
     | Some tick ->
         {
           turn = (if alice_to_play then Alice else Bob);
-          start_state = parent.compressed_state;
-          start_tick = Sc_rollup_tick_repr.initial;
-          stop_state = None;
-          stop_tick = Sc_rollup_tick_repr.next tick;
-          current_dissection = [(commit.compressed_state, tick)];
+          dissection =
+            [
+              (Some parent.compressed_state, Sc_rollup_tick_repr.initial);
+              (Some commit.compressed_state, tick);
+              (None, Sc_rollup_tick_repr.next tick);
+            ];
         }
-    (* XXX: explain or remove this *)
+    (* XXX: create issue to fix the tick data
+       types---[Number_of_ticks] and [Sc_rollup_tick_repr] should be
+       made into one type and we should work out how big it needs to
+       be and how to avoid overflows. *)
     | None -> assert false
 
   type step =
-    | Dissection of (State_hash.t * Sc_rollup_tick_repr.t) list
+    | Dissection of (State_hash.t option * Sc_rollup_tick_repr.t) list
     | Proof of Proof.t
 
   let step_encoding =
@@ -554,7 +526,8 @@ module Game = struct
         case
           ~title:"Dissection"
           (Tag 0)
-          (list (tup2 State_hash.encoding Sc_rollup_tick_repr.encoding))
+          (list
+             (tup2 (option State_hash.encoding) Sc_rollup_tick_repr.encoding))
           (function Dissection d -> Some d | _ -> None)
           (fun d -> Dissection d);
         case
@@ -577,7 +550,7 @@ module Game = struct
               "tick = %a, state = %a\n"
               Sc_rollup_tick_repr.pp
               t
-              State_hash.pp
+              (Format.pp_print_option State_hash.pp)
               hash)
           ppf
           states
@@ -690,9 +663,93 @@ module Game = struct
       (fun (loser, reason) -> {loser; reason})
       (obj2 (req "loser" player_encoding) (req "reason" reason_encoding))
 
+  (** Checks that the tick count chosen by the current move is one of
+      the ones in the current dissection. Returns a tuple containing
+      the current dissection interval (including the two states) between
+      this tick and the next. *)
+  let find_choice game tick =
+    let open Result_syntax in
+    let rec traverse states =
+      match states with
+      | (state, state_tick) :: (next_state, next_tick) :: others ->
+          if Sc_rollup_tick_repr.(tick = state_tick) then
+            return (state, tick, next_state, next_tick)
+          else traverse ((next_state, next_tick) :: others)
+      | _ -> error ()
+    in
+    traverse game.dissection
+
+  let check pred =
+    let open Result_syntax in
+    if pred then return () else error ()
+
+  (** We check firstly that [dissection] is not too short: it must
+      introduce at least one new intermediate state.
+      
+      Then we check that [dissection] starts at the correct tick and state,
+      and that it ends at the correct tick and with a different state to
+      the current dissection.
+
+      Finally, we check that [dissection] is well formed: it has correctly
+      ordered the ticks, and it contains no [None] states except for
+      possibly the last one. *)
+  let check_dissection start start_tick stop stop_tick dissection =
+    let open Result_syntax in
+    let* _ =
+      match List.length dissection with 0 | 1 | 2 -> error () | _ -> return ()
+    in
+    let* _ =
+      match (List.hd dissection, List.last_opt dissection) with
+      | (Some (a, a_tick), Some (b, b_tick)) ->
+          check
+            (Option.equal State_hash.equal a start
+            && (not (Option.equal State_hash.equal b stop))
+            && Sc_rollup_tick_repr.(a_tick = start_tick && b_tick = stop_tick))
+      | _ -> error ()
+    in
+    let rec traverse states =
+      match states with
+      | (Some _, tick) :: (next_state, next_tick) :: others ->
+          if Sc_rollup_tick_repr.(tick < next_tick) then
+            traverse ((next_state, next_tick) :: others)
+          else error ()
+      | (None, _) :: _ :: _ -> error ()
+      | _ -> return ()
+    in
+    traverse dissection
+
+  (** We check firstly that the interval in question is a single tick.
+      
+      Then we check the proof begins with the correct state and ends
+      with a different state to the one in the current dissection.
+      
+      Finally, we check that the proof itself is valid. *)
+  let check_proof start start_tick stop stop_tick proof =
+    check
+      (Int64.equal
+         1L
+         (Z.to_int64 (Sc_rollup_tick_repr.distance start_tick stop_tick))
+      && Option.equal State_hash.equal start (Some (Proof.start_state proof))
+      && (not (Option.equal State_hash.equal stop (Proof.stop_state proof)))
+      && Proof.valid proof)
+
   let play game refutation =
-    let invalid = Either.Left {loser = game.turn; reason = Invalid_move} in
-    match refutation.step with
-    | Dissection _cuts -> if false then invalid else Either.Right game
-    | Proof _proof -> Either.Right game
+    let result =
+      let open Result_syntax in
+      let* (start, start_tick, stop, stop_tick) =
+        find_choice game refutation.choice
+      in
+      match refutation.step with
+      | Dissection states ->
+          let* _ = check_dissection start start_tick stop stop_tick states in
+          return (Either.Right {turn = opponent game.turn; dissection = states})
+      | Proof proof ->
+          let* _ = check_proof start start_tick stop stop_tick proof in
+          return
+            (Either.Left
+               {loser = opponent game.turn; reason = Conflict_resolved})
+    in
+    match Option.of_result result with
+    | Some x -> x
+    | None -> Either.Left {loser = game.turn; reason = Invalid_move}
 end

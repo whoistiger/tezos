@@ -2582,17 +2582,13 @@ module Sc_rollup : sig
 
     type t = {
       turn : player;
-      start_state : State_hash.t;
-      start_tick : Sc_rollup_tick_repr.t;
-      stop_state : State_hash.t option;
-      stop_tick : Sc_rollup_tick_repr.t;
-      current_dissection : (State_hash.t * Sc_rollup_tick_repr.t) list;
+      dissection : (State_hash.t option * Sc_rollup_tick_repr.t) list;
     }
 
     val opponent : player -> player
 
     type step =
-      | Dissection of (State_hash.t * Sc_rollup_tick_repr.t) list
+      | Dissection of (State_hash.t option * Sc_rollup_tick_repr.t) list
       | Proof of Proof.t
 
     type refutation = {choice : Sc_rollup_tick_repr.t; step : step}
