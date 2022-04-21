@@ -223,6 +223,10 @@ module Game : sig
     (** The 'normal form' for indices is when the two stakers are
         ordered (we just use [Staker.compare]). *)
     val normalize : t -> t
+
+    (** Given an index in normal form, resolve a given [player] ([Alice]
+        or [Bob]) to the actual staker they represent. *)
+    val staker : Staker.t * Staker.t -> player -> Staker.t
   end
 
   (** To begin a game, first the conflict point in the commit tree is
@@ -255,15 +259,33 @@ module Game : sig
 
   val refutation_encoding : refutation Data_encoding.t
 
-  (** A game usually ends with [SlashStaker loser], punishing one of the
-      two players. In some circumstances a game can end with a valid
-      proof that proves both players wrong, in which case
-      [SlashBothStakers] is used. *)
-  type outcome =
-    | SlashStaker of Staker.t
-    | SlashBothStakers of Staker.t * Staker.t
+  (** A game ends for one of three reasons: the conflict has been
+      resolved via a proof, a player has been timed out, or a player has
+      forfeited because of attempting to make an invalid move. *)
+  type reason = Conflict_resolved | Invalid_move | Timeout
+
+  val pp_reason : Format.formatter -> reason -> unit
+
+  val reason_encoding : reason Data_encoding.t
+
+  (** A type that represents the current game status in a way that is
+      useful to the outside world. Used in operation result types. *)
+  type status = Ongoing | Ended of (reason * Staker.t)
+
+  val pp_status : Format.formatter -> status -> unit
+
+  val status_encoding : status Data_encoding.t
+
+  (** A game ends with a single [loser] and the [reason] for the game
+      ending. This type is 'internal' to the game logic, it uses
+      [Alice] or [Bob] to refer to the players without knowing which
+      stakers they are. *)
+  type outcome = {loser : player; reason : reason}
 
   val pp_outcome : Format.formatter -> outcome -> unit
 
   val outcome_encoding : outcome Data_encoding.t
+
+  (** XXX: docstring *)
+  val play : t -> refutation -> (outcome, t) Either.t
 end

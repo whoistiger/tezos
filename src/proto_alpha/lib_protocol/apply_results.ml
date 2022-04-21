@@ -217,12 +217,12 @@ type _ successful_manager_operation_result =
       -> Kind.sc_rollup_publish successful_manager_operation_result
   | Sc_rollup_refute_result : {
       consumed_gas : Gas.Arith.fp;
-      outcome : Sc_rollup.Game.outcome option;
+      status : Sc_rollup.Game.status;
     }
       -> Kind.sc_rollup_refute successful_manager_operation_result
   | Sc_rollup_timeout_result : {
       consumed_gas : Gas.Arith.fp;
-      outcome : Sc_rollup.Game.outcome;
+      status : Sc_rollup.Game.status;
     }
       -> Kind.sc_rollup_timeout successful_manager_operation_result
 
@@ -956,17 +956,17 @@ module Manager_result = struct
           obj3
             (req "consumed_gas" Gas.Arith.n_integral_encoding)
             (dft "consumed_milligas" Gas.Arith.n_fp_encoding Gas.Arith.zero)
-            (req "outcome" (option Sc_rollup.Game.outcome_encoding)))
+            (req "status" Sc_rollup.Game.status_encoding))
       ~select:(function
         | Successful_manager_result (Sc_rollup_refute_result _ as op) -> Some op
         | _ -> None)
       ~proj:(function
-        | Sc_rollup_refute_result {consumed_gas; outcome} ->
-            (Gas.Arith.ceil consumed_gas, consumed_gas, outcome))
+        | Sc_rollup_refute_result {consumed_gas; status} ->
+            (Gas.Arith.ceil consumed_gas, consumed_gas, status))
       ~kind:Kind.Sc_rollup_refute_manager_kind
-      ~inj:(fun (consumed_gas, consumed_milligas, outcome) ->
+      ~inj:(fun (consumed_gas, consumed_milligas, status) ->
         assert (Gas.Arith.(equal (ceil consumed_milligas) consumed_gas)) ;
-        Sc_rollup_refute_result {consumed_gas = consumed_milligas; outcome})
+        Sc_rollup_refute_result {consumed_gas = consumed_milligas; status})
 
   let sc_rollup_timeout_case =
     make
@@ -975,18 +975,18 @@ module Manager_result = struct
         (obj3
            (req "consumed_gas" Gas.Arith.n_integral_encoding)
            (dft "consumed_milligas" Gas.Arith.n_fp_encoding Gas.Arith.zero)
-           (req "outcome" Sc_rollup.Game.outcome_encoding))
+           (req "status" Sc_rollup.Game.status_encoding))
       ~select:(function
         | Successful_manager_result (Sc_rollup_timeout_result _ as op) ->
             Some op
         | _ -> None)
       ~proj:(function
-        | Sc_rollup_timeout_result {consumed_gas; outcome} ->
-            (Gas.Arith.ceil consumed_gas, consumed_gas, outcome))
+        | Sc_rollup_timeout_result {consumed_gas; status} ->
+            (Gas.Arith.ceil consumed_gas, consumed_gas, status))
       ~kind:Kind.Sc_rollup_timeout_manager_kind
-      ~inj:(fun (consumed_gas, consumed_milligas, outcome) ->
+      ~inj:(fun (consumed_gas, consumed_milligas, status) ->
         assert (Gas.Arith.(equal (ceil consumed_milligas) consumed_gas)) ;
-        Sc_rollup_timeout_result {consumed_gas = consumed_milligas; outcome})
+        Sc_rollup_timeout_result {consumed_gas = consumed_milligas; status})
 end
 
 type 'kind iselect =

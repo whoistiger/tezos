@@ -1756,25 +1756,21 @@ let apply_external_manager_operation_content :
       let result = Sc_rollup_publish_result {staked_hash; consumed_gas} in
       return (ctxt, result, [])
   | Sc_rollup_refute {rollup; opponent; refutation} ->
-      Sc_rollup.update_game
-        ctxt
-        rollup
-        source
-        opponent
-        (Sc_rollup_game.move refutation)
+      Sc_rollup.update_game ctxt rollup source opponent refutation
       >>=? fun (outcome, ctxt) ->
       (match outcome with
-      | None -> return ctxt
-      | Some o -> Sc_rollup.apply_outcome ctxt rollup o)
-      >>=? fun ctxt ->
+      | None -> return (Sc_rollup.Game.Ongoing, ctxt)
+      | Some o -> Sc_rollup.apply_outcome ctxt rollup (source, opponent) o)
+      >>=? fun (status, ctxt) ->
       let consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt in
-      let result = Sc_rollup_refute_result {outcome; consumed_gas} in
+      let result = Sc_rollup_refute_result {status; consumed_gas} in
       return (ctxt, result, [])
   | Sc_rollup_timeout {rollup; winner; loser} ->
       Sc_rollup.timeout ctxt rollup (winner, loser) >>=? fun (outcome, ctxt) ->
-      Sc_rollup.apply_outcome ctxt rollup outcome >>=? fun ctxt ->
+      Sc_rollup.apply_outcome ctxt rollup (winner, loser) outcome
+      >>=? fun (status, ctxt) ->
       let consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt in
-      let result = Sc_rollup_timeout_result {outcome; consumed_gas} in
+      let result = Sc_rollup_timeout_result {status; consumed_gas} in
       return (ctxt, result, [])
 
 type success_or_failure = Success of context | Failure

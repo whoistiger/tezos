@@ -429,17 +429,16 @@ val get_or_init_game :
   Sc_rollup_repr.Staker.t ->
   (Sc_rollup_repr.Game.t * Raw_context.t) tzresult Lwt.t
 
-(** [update_game ctxt rollup refuter defender update_fn] handles the
+(** [update_game ctxt rollup refuter defender refutation] handles the
     storage-side logic for when one of the players makes a move in the
     game. It initializes the game if necessary (the first move looks
     much like any other). It checks that [refuter] is the player whose
-    turn it is; if so, it applies [update_fn].
+    turn it is; if so, it applies [refutation] using the [play].
     
     If the result is a new game, this is stored and the timeout level is
     updated. 
     
-    If the result is a value of type ['a], this represents the end of the
-    game so the game will be deleted from storage and the ['a] returned.
+    If the result is an [outcome], this will be returned.
     
     May fail with:
     {ul
@@ -456,11 +455,17 @@ val update_game :
   Sc_rollup_repr.t ->
   Sc_rollup_repr.Staker.t ->
   Sc_rollup_repr.Staker.t ->
-  (Sc_rollup_repr.Game.t -> ('a, Sc_rollup_repr.Game.t) Either.t) ->
-  ('a option * Raw_context.t) tzresult Lwt.t
+  Sc_rollup_repr.Game.refutation ->
+  (Sc_rollup_repr.Game.outcome option * Raw_context.t) tzresult Lwt.t
 
-(** [apply_outcome ctxt rollup outcome] will punish one or both stakers,
-    as specified by [outcome].
+(** [apply_outcome ctxt rollup outcome] will take an [outcome] produced
+    by [timeout] or [update_game] and perform the necessary end-of-game
+    cleanup: remove the game itself from the store and punish the losing
+    player by removing their stake.
+
+    It also translates the 'internal' type to represent the end of the
+    game, [outcome], into the [status] type that makes sense to the
+    outside world.
     
     This is mostly just calling [remove_staker], so it can fail with the
     same errors as that. However, if it is called on an [outcome]
@@ -469,8 +474,9 @@ val update_game :
 val apply_outcome :
   Raw_context.t ->
   Sc_rollup_repr.t ->
+  Sc_rollup_repr.Staker.t * Sc_rollup_repr.Staker.t ->
   Sc_rollup_repr.Game.outcome ->
-  Raw_context.t tzresult Lwt.t
+  (Sc_rollup_repr.Game.status * Raw_context.t) tzresult Lwt.t
 
 (** [timeout ctxt rollup stakers] will check that the timeout has
     elapsed and if so return a game outcome that punishes whichever

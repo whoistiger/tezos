@@ -695,25 +695,22 @@ let pp_manager_operation_contents_and_result ppf
       staked_hash
   in
   let pp_sc_rollup_refute_result
-      (Sc_rollup_refute_result {consumed_gas; outcome}) =
-    Format.fprintf ppf "@,Consumed gas: %a" Gas.Arith.pp consumed_gas ;
-    match outcome with
-    | None -> Format.fprintf ppf "@,Refutation game ongoing."
-    | Some o ->
-        Format.fprintf
-          ppf
-          "@,Refutation completed, outcome: %a"
-          Sc_rollup.Game.pp_outcome
-          o
-  in
-  let pp_sc_rollup_timeout_result
-      (Sc_rollup_timeout_result {consumed_gas; outcome}) =
+      (Sc_rollup_refute_result {consumed_gas; status}) =
     Format.fprintf ppf "@,Consumed gas: %a" Gas.Arith.pp consumed_gas ;
     Format.fprintf
       ppf
-      "@,Refutation game timeout: %a"
-      Sc_rollup.Game.pp_outcome
-      outcome
+      "@,Refutation game status: %a"
+      Sc_rollup.Game.pp_status
+      status
+  in
+  let pp_sc_rollup_timeout_result
+      (Sc_rollup_timeout_result {consumed_gas; status}) =
+    Format.fprintf ppf "@,Consumed gas: %a" Gas.Arith.pp consumed_gas ;
+    Format.fprintf
+      ppf
+      "@,Refutation game status: %a"
+      Sc_rollup.Game.pp_status
+      status
   in
   let pp_result (type kind) ppf (result : kind manager_operation_result) =
     Format.fprintf ppf "@," ;

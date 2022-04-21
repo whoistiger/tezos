@@ -387,15 +387,15 @@ module Game = struct
         case
           ~title:"Alice"
           (Tag 0)
-          string
-          (function Alice -> Some "alice" | _ -> None)
-          (fun _ -> Alice);
+          unit
+          (function Alice -> Some () | _ -> None)
+          (fun () -> Alice);
         case
           ~title:"Bob"
           (Tag 1)
-          string
-          (function Bob -> Some "bob" | _ -> None)
-          (fun _ -> Bob);
+          unit
+          (function Bob -> Some () | _ -> None)
+          (fun () -> Bob);
       ]
 
   let string_of_player = function Alice -> "alice" | Bob -> "bob"
@@ -516,6 +516,10 @@ module Game = struct
 
     let normalize (a, b) =
       match Staker.compare a b with 1 -> (b, a) | _ -> (a, b)
+
+    let staker stakers player =
+      let (alice, bob) = normalize stakers in
+      match player with Alice -> alice | Bob -> bob
   end
 
   let initial (parent : Commitment.t) (commit : Commitment.t) refuter defender =
@@ -599,39 +603,96 @@ module Game = struct
          (req "choice" Sc_rollup_tick_repr.encoding)
          (req "step" step_encoding))
 
-  type outcome =
-    | SlashStaker of Staker.t
-    | SlashBothStakers of Staker.t * Staker.t
+  type reason = Conflict_resolved | Invalid_move | Timeout
 
-  let pp_outcome ppf outcome =
-    match outcome with
-    | SlashStaker staker ->
-        Format.fprintf ppf "Staker %a loses their stake.\n" Staker.pp staker
-    | SlashBothStakers (a, b) ->
-        Format.fprintf
-          ppf
-          "Both stakers %a and %a lose their stakes.\n"
-          Staker.pp
-          a
-          Staker.pp
-          b
+  let pp_reason ppf reason =
+    Format.fprintf
+      ppf
+      "%s"
+      (match reason with
+      | Conflict_resolved -> "conflict resolved"
+      | Invalid_move -> "invalid move"
+      | Timeout -> "timeout")
 
-  let outcome_encoding =
+  let reason_encoding =
     let open Data_encoding in
     union
       ~tag_size:`Uint8
       [
         case
-          ~title:"SlashStaker"
+          ~title:"Conflict_resolved"
           (Tag 0)
-          Staker.encoding
-          (function SlashStaker s -> Some s | _ -> None)
-          (fun s -> SlashStaker s);
+          unit
+          (function Conflict_resolved -> Some () | _ -> None)
+          (fun () -> Conflict_resolved);
         case
-          ~title:"SlashBothStakers"
+          ~title:"Invalid_move"
           (Tag 1)
-          (tup2 Staker.encoding Staker.encoding)
-          (function SlashBothStakers (s, t) -> Some (s, t) | _ -> None)
-          (fun (s, t) -> SlashBothStakers (s, t));
+          unit
+          (function Invalid_move -> Some () | _ -> None)
+          (fun () -> Invalid_move);
+        case
+          ~title:"Timeout"
+          (Tag 2)
+          unit
+          (function Timeout -> Some () | _ -> None)
+          (fun () -> Timeout);
       ]
+
+  type status = Ongoing | Ended of (reason * Staker.t)
+
+  let pp_status ppf status =
+    match status with
+    | Ongoing -> Format.fprintf ppf "Game ongoing"
+    | Ended (reason, staker) ->
+        Format.fprintf
+          ppf
+          "Game ended due to %a, %a loses their stake"
+          pp_reason
+          reason
+          Staker.pp
+          staker
+
+  let status_encoding =
+    let open Data_encoding in
+    union
+      ~tag_size:`Uint8
+      [
+        case
+          ~title:"Ongoing"
+          (Tag 0)
+          unit
+          (function Ongoing -> Some () | _ -> None)
+          (fun () -> Ongoing);
+        case
+          ~title:"Ended"
+          (Tag 1)
+          (tup2 reason_encoding Staker.encoding)
+          (function Ended (r, s) -> Some (r, s) | _ -> None)
+          (fun (r, s) -> Ended (r, s));
+      ]
+
+  type outcome = {loser : player; reason : reason}
+
+  let pp_outcome ppf outcome =
+    Format.fprintf
+      ppf
+      "Game outcome: %a - %a has lost.\n"
+      pp_reason
+      outcome.reason
+      pp_player
+      outcome.loser
+
+  let outcome_encoding =
+    let open Data_encoding in
+    conv
+      (fun {loser; reason} -> (loser, reason))
+      (fun (loser, reason) -> {loser; reason})
+      (obj2 (req "loser" player_encoding) (req "reason" reason_encoding))
+
+  let play game refutation =
+    let invalid = Either.Left {loser = game.turn; reason = Invalid_move} in
+    match refutation.step with
+    | Dissection _cuts -> if false then invalid else Either.Right game
+    | Proof _proof -> Either.Right game
 end

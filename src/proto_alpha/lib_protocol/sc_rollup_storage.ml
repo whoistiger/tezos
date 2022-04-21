@@ -786,7 +786,7 @@ let get_or_init_game ctxt rollup refuter defender =
       in
       return (game, ctxt)
 
-let update_game ctxt rollup refuter defender update_fn =
+let update_game ctxt rollup refuter defender refutation =
   let open Lwt_tzresult_syntax in
   let (alice, bob) = Sc_rollup_repr.Game.Index.normalize (refuter, defender) in
   let* (game, ctxt) = get_or_init_game ctxt rollup refuter defender in
@@ -799,13 +799,8 @@ let update_game ctxt rollup refuter defender update_fn =
         if Sc_rollup_repr.Staker.equal bob refuter then return ()
         else fail Sc_rollup_wrong_turn
   in
-  match update_fn game with
-  | Either.Left outcome ->
-      let* (ctxt, _, _) = Store.Game.remove (ctxt, rollup) (alice, bob) in
-      let* (ctxt, _, _) =
-        Store.Game_timeout.remove (ctxt, rollup) (alice, bob)
-      in
-      return (Some outcome, ctxt)
+  match Sc_rollup_repr.Game.play game refutation with
+  | Either.Left outcome -> return (Some outcome, ctxt)
   | Either.Right new_game ->
       let* (ctxt, _) = Store.Game.update (ctxt, rollup) (alice, bob) new_game in
       let* (ctxt, _) =
@@ -816,14 +811,14 @@ let update_game ctxt rollup refuter defender update_fn =
       in
       return (None, ctxt)
 
-let apply_outcome ctxt rollup outcome =
+let apply_outcome ctxt rollup stakers (outcome : Sc_rollup_repr.Game.outcome) =
   let open Lwt_tzresult_syntax in
-  match outcome with
-  | Sc_rollup_repr.Game.SlashStaker staker -> remove_staker ctxt rollup staker
-  | Sc_rollup_repr.Game.SlashBothStakers (alice, bob) ->
-      let* ctxt = remove_staker ctxt rollup alice in
-      let* ctxt = remove_staker ctxt rollup bob in
-      return ctxt
+  let (alice, bob) = Sc_rollup_repr.Game.Index.normalize stakers in
+  let losing_staker = Sc_rollup_repr.Game.Index.staker stakers outcome.loser in
+  let* ctxt = remove_staker ctxt rollup losing_staker in
+  let* (ctxt, _, _) = Store.Game.remove (ctxt, rollup) (alice, bob) in
+  let* (ctxt, _, _) = Store.Game_timeout.remove (ctxt, rollup) (alice, bob) in
+  return (Sc_rollup_repr.Game.Ended (outcome.reason, losing_staker), ctxt)
 
 let timeout ctxt rollup stakers =
   let open Lwt_tzresult_syntax in
@@ -837,7 +832,5 @@ let timeout ctxt rollup stakers =
         Store.Game_timeout.get (ctxt, rollup) (alice, bob)
       in
       if Raw_level_repr.(level > timeout_level) then
-        match game.turn with
-        | Alice -> return (Sc_rollup_repr.Game.SlashStaker alice, ctxt)
-        | Bob -> return (Sc_rollup_repr.Game.SlashStaker bob, ctxt)
+        return (Sc_rollup_repr.Game.{loser = game.turn; reason = Timeout}, ctxt)
       else fail Sc_rollup_timeout_level_not_reached

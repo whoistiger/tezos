@@ -2599,9 +2599,19 @@ module Sc_rollup : sig
 
     val pp_refutation : Format.formatter -> refutation -> unit
 
-    type outcome =
-      | SlashStaker of Staker.t
-      | SlashBothStakers of Staker.t * Staker.t
+    type reason = Conflict_resolved | Invalid_move | Timeout
+
+    val pp_reason : Format.formatter -> reason -> unit
+
+    val reason_encoding : reason Data_encoding.t
+
+    type status = Ongoing | Ended of (reason * Staker.t)
+
+    val pp_status : Format.formatter -> status -> unit
+
+    val status_encoding : status Data_encoding.t
+
+    type outcome = {loser : player; reason : reason}
 
     val pp_outcome : Format.formatter -> outcome -> unit
 
@@ -2662,10 +2672,15 @@ module Sc_rollup : sig
     t ->
     Staker.t ->
     Staker.t ->
-    (Game.t -> ('a, Game.t) Either.t) ->
-    ('a option * context) tzresult Lwt.t
+    Game.refutation ->
+    (Game.outcome option * context) tzresult Lwt.t
 
-  val apply_outcome : context -> t -> Game.outcome -> context tzresult Lwt.t
+  val apply_outcome :
+    context ->
+    t ->
+    Staker.t * Staker.t ->
+    Game.outcome ->
+    (Game.status * context) tzresult Lwt.t
 
   val timeout :
     context ->
