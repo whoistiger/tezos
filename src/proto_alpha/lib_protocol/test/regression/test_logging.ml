@@ -66,7 +66,7 @@ type trace_element =
       -> trace_element
   | TCtrl : ('a, 'b, 'c, 'd) Script_typed_ir.continuation -> trace_element
 
-let pp_instr_name :
+let rec pp_instr_name :
     type a b c d.
     Format.formatter -> (a, b, c, d) Script_typed_ir.kinstr -> unit =
   let open Script_typed_ir in
@@ -219,35 +219,33 @@ let pp_instr_name :
     | IJoin_tickets _ -> pp_print_string fmt "JOIN_TICKETS"
     | IOpen_chest _ -> pp_print_string fmt "OPEN_CHEST"
     | IHalt _ -> pp_print_string fmt "[halt]"
-    | ILog _ -> pp_print_string fmt "[log]"
+    | ILog (_, _, _, instr) -> Format.fprintf fmt "log/%a" pp_instr_name instr
 
 let with_indentation fmt = function
   | Interp ->
       Format.fprintf
         fmt
-        "- @[<v 0>%a (interp) @@ location: %d (remaining gas: %a)@,\
+        "- @[<v 0>%a (interp) @@ location: %d@,\
          [ @[<v 0>%a ]@]@]"
   | Exit ->
       Format.fprintf
         fmt
-        "- @[<v 0>%a (exit) @@ location: %d (remaining gas: %a)@,\
+        "- @[<v 0>%a (exit) @@ location: %d@,\
          [ @[<v 0>%a ]@]@]@]"
   | Entry ->
       Format.fprintf
         fmt
-        "@[<v 2>- @[<v 0>%a (entry) @@ location: %d (remaining gas: %a)@,\
+        "@[<v 2>- @[<v 0>%a (entry) @@ location: %d@,\
          [ @[<v 0>%a ]@]@]"
 
 let pp_trace fmt = function
-  | TInstr (loc, gas, instr, stack, element_kind) ->
+  | TInstr (loc, _gas, instr, stack, element_kind) ->
       with_indentation
         fmt
         element_kind
         pp_instr_name
         instr
         loc
-        Gas.pp
-        gas
         (Format.pp_print_list (fun ppf e ->
              Format.fprintf ppf "@[<v 0>%a@]" Michelson_v1_printer.print_expr e))
         stack
