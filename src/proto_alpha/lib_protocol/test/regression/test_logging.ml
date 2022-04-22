@@ -308,7 +308,7 @@ let logger () :
 
 let test_context () =
   let open Environment.Error_monad in
-  let* (b, _contracts) = Context.init1 ~consensus_threshold:0 () in
+  let* (b, _contract) = Context.init1 ~consensus_threshold:0 () in
   let* inc = Incremental.begin_construction b in
   let ctxt = Incremental.alpha_ctxt inc in
   return @@ Alpha_context.Origination_nonce.init ctxt Operation_hash.zero
