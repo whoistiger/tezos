@@ -2008,7 +2008,7 @@ module RPC = struct
             (fun (Log (ctxt, loc, stack, stack_ty)) ->
               trace
                 Cannot_serialize_log
-                (Script_ir_translator.unparse_stack_uncarbonated
+                (Script_ir_translator.Internals.unparse_stack_uncarbonated
                    ~unparsing_mode:Unparsing_mode.unparsing_mode
                    ~stack_ty
                    ctxt

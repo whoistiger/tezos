@@ -225,18 +225,15 @@ let with_indentation fmt = function
   | Interp ->
       Format.fprintf
         fmt
-        "- @[<v 0>%a (interp) @@ location: %d@,\
-         [ @[<v 0>%a ]@]@]"
+        "- @[<v 0>%a (interp) @@ location: %d@,[ @[<v 0>%a ]@]@]"
   | Exit ->
       Format.fprintf
         fmt
-        "- @[<v 0>%a (exit) @@ location: %d@,\
-         [ @[<v 0>%a ]@]@]@]"
+        "- @[<v 0>%a (exit) @@ location: %d@,[ @[<v 0>%a ]@]@]@]"
   | Entry ->
       Format.fprintf
         fmt
-        "@[<v 2>- @[<v 0>%a (entry) @@ location: %d@,\
-         [ @[<v 0>%a ]@]@]"
+        "@[<v 2>- @[<v 0>%a (entry) @@ location: %d@,[ @[<v 0>%a ]@]@]"
 
 let pp_trace fmt = function
   | TInstr (loc, _gas, instr, stack, element_kind) ->
@@ -292,7 +289,7 @@ let logger () :
           | With_stack (ctxt, instr, loc, stack, stack_ty, indent) ->
               let+ stack =
                 Lwt.map Environment.wrap_tzresult
-                @@ Script_ir_translator.unparse_stack_uncarbonated
+                @@ Script_ir_translator.Internals.unparse_stack_uncarbonated
                      ~unparsing_mode:Script_ir_translator.Readable
                      ~stack_ty
                      ctxt

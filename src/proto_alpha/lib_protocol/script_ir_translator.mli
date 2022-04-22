@@ -404,13 +404,6 @@ val parse_and_unparse_script_unaccounted :
   Script.t ->
   (Script.t * context) tzresult Lwt.t
 
-val unparse_stack_uncarbonated :
-  unparsing_mode:unparsing_mode ->
-  stack_ty:('a, 'b) Script_typed_ir.stack_ty ->
-  context ->
-  'a * 'b ->
-  Script.expr list tzresult Lwt.t
-
 val parse_contract :
   context ->
   Script.location ->
@@ -530,3 +523,12 @@ val code_size :
     the in-memory representation of [script] in bytes as well as the cost
     associated to computing that overapproximation. *)
 val script_size : ex_script -> int * Gas_limit_repr.cost
+
+module Internals : sig
+  val unparse_stack_uncarbonated :
+    unparsing_mode:unparsing_mode ->
+    stack_ty:('a, 'b) Script_typed_ir.stack_ty ->
+    context ->
+    'a * 'b ->
+    Script.expr list tzresult Lwt.t
+end

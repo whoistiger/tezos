@@ -6254,3 +6254,9 @@ let script_size
 let typecheck_code ~legacy ~show_types ctxt code =
   typecheck_code ~legacy ~show_types ctxt code
   >|=? fun (Typechecked_code_internal {type_map; _}, ctxt) -> (type_map, ctxt)
+
+(* Exporting as internals to make sure we won't accidentally use it within
+   the protocol. *)
+module Internals = struct
+  let unparse_stack_uncarbonated = unparse_stack_uncarbonated
+end
