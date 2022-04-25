@@ -1624,11 +1624,11 @@ module Sc_rollup = struct
          (struct
            let name = ["game"]
          end))
-         (Make_index (Sc_rollup_repr.Game.Index))
+         (Make_index (Sc_rollup_game_repr.Index))
          (struct
-           type t = Sc_rollup_repr.Game.t
+           type t = Sc_rollup_game_repr.t
 
-           let encoding = Sc_rollup_repr.Game.encoding
+           let encoding = Sc_rollup_game_repr.encoding
          end)
 
   module Game_timeout =
@@ -1637,7 +1637,7 @@ module Sc_rollup = struct
          (struct
            let name = ["game_timeout"]
          end))
-         (Make_index (Sc_rollup_repr.Game.Index))
+         (Make_index (Sc_rollup_game_repr.Index))
          (struct
            type t = Raw_level_repr.t
 

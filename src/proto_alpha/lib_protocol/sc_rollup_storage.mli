@@ -411,7 +411,7 @@ val initial_level :
     If it does not already exist, it will be created with [refuter] as the 
     first player to move. The initial state of the game will be obtained
     from the commitment pair belonging to [defender] at the conflict
-    point. See [Sc_rollup_repr.Game.initial] for documentation on how a
+    point. See [Sc_rollup_game_repr.initial] for documentation on how a
     pair of commitments is turned into an initial game state.
     
     May fail with:
@@ -427,7 +427,7 @@ val get_or_init_game :
   Sc_rollup_repr.t ->
   Sc_rollup_repr.Staker.t ->
   Sc_rollup_repr.Staker.t ->
-  (Sc_rollup_repr.Game.t * Raw_context.t) tzresult Lwt.t
+  (Sc_rollup_game_repr.t * Raw_context.t) tzresult Lwt.t
 
 (** [update_game ctxt rollup refuter defender refutation] handles the
     storage-side logic for when one of the players makes a move in the
@@ -455,8 +455,8 @@ val update_game :
   Sc_rollup_repr.t ->
   Sc_rollup_repr.Staker.t ->
   Sc_rollup_repr.Staker.t ->
-  Sc_rollup_repr.Game.refutation ->
-  (Sc_rollup_repr.Game.outcome option * Raw_context.t) tzresult Lwt.t
+  Sc_rollup_game_repr.refutation ->
+  (Sc_rollup_game_repr.outcome option * Raw_context.t) tzresult Lwt.t
 
 (** [apply_outcome ctxt rollup outcome] will take an [outcome] produced
     by [timeout] or [update_game] and perform the necessary end-of-game
@@ -475,8 +475,8 @@ val apply_outcome :
   Raw_context.t ->
   Sc_rollup_repr.t ->
   Sc_rollup_repr.Staker.t * Sc_rollup_repr.Staker.t ->
-  Sc_rollup_repr.Game.outcome ->
-  (Sc_rollup_repr.Game.status * Raw_context.t) tzresult Lwt.t
+  Sc_rollup_game_repr.outcome ->
+  (Sc_rollup_game_repr.status * Raw_context.t) tzresult Lwt.t
 
 (** [timeout ctxt rollup stakers] will check that the timeout has
     elapsed and if so return a game outcome that punishes whichever
@@ -492,4 +492,4 @@ val timeout :
   Raw_context.t ->
   Sc_rollup_repr.t ->
   Sc_rollup_repr.Staker.t * Sc_rollup_repr.Staker.t ->
-  (Sc_rollup_repr.Game.outcome * Raw_context.t) tzresult Lwt.t
+  (Sc_rollup_game_repr.outcome * Raw_context.t) tzresult Lwt.t

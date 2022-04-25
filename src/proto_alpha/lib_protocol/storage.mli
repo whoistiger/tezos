@@ -781,8 +781,8 @@ module Sc_rollup : sig
   *)
   module Game :
     Non_iterable_indexed_carbonated_data_storage
-      with type key = Sc_rollup_repr.Staker.t * Sc_rollup_repr.Staker.t
-       and type value = Sc_rollup_repr.Game.t
+      with type key = Sc_rollup_game_repr.Index.t
+       and type value = Sc_rollup_game_repr.t
        and type t = Raw_context.t * Sc_rollup_repr.t
 
   (** [Game_timeout] stores the block level at which the staker whose
@@ -790,7 +790,7 @@ module Sc_rollup : sig
   *)
   module Game_timeout :
     Non_iterable_indexed_carbonated_data_storage
-      with type key = Sc_rollup_repr.Staker.t * Sc_rollup_repr.Staker.t
+      with type key = Sc_rollup_game_repr.Index.t
        and type value = Raw_level_repr.t
        and type t = Raw_context.t * Sc_rollup_repr.t
 end

@@ -2573,25 +2573,37 @@ module Sc_rollup : sig
       MerkelizedOperations with type tree = Tree.tree
   end
 
-  module Proof : sig
-    type t = Computation_step | Input_step | Blocked_step
-  end
-
   module Game : sig
+    module Proof : sig
+      type t =
+        | Computation_step of {
+            valid : bool;
+            start : State_hash.t;
+            stop : State_hash.t;
+          }
+        | Input_step of {
+            valid : bool;
+            start : State_hash.t;
+            stop : State_hash.t;
+          }
+        | Blocked_step of {valid : bool; start : State_hash.t}
+    end
+
     type player = Alice | Bob
 
     type t = {
       turn : player;
-      dissection : (State_hash.t option * Sc_rollup_tick_repr.t) list;
+      inbox_snapshot : Inbox.t;
+      dissection : (State_hash.t option * Tick.t) list;
     }
 
     val opponent : player -> player
 
     type step =
-      | Dissection of (State_hash.t option * Sc_rollup_tick_repr.t) list
+      | Dissection of (State_hash.t option * Tick.t) list
       | Proof of Proof.t
 
-    type refutation = {choice : Sc_rollup_tick_repr.t; step : step}
+    type refutation = {choice : Tick.t; step : step}
 
     val pp_refutation : Format.formatter -> refutation -> unit
 

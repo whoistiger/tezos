@@ -382,7 +382,7 @@ and _ manager_operation =
   | Sc_rollup_refute : {
       rollup : Sc_rollup_repr.t;
       opponent : Sc_rollup_repr.Staker.t;
-      refutation : Sc_rollup_repr.Game.refutation;
+      refutation : Sc_rollup_game_repr.refutation;
     }
       -> Kind.sc_rollup_refute manager_operation
   | Sc_rollup_timeout : {
@@ -995,7 +995,7 @@ module Encoding = struct
             obj3
               (req "rollup" Sc_rollup_repr.encoding)
               (req "opponent" Sc_rollup_repr.Staker.encoding)
-              (req "refutation" Sc_rollup_repr.Game.refutation_encoding);
+              (req "refutation" Sc_rollup_game_repr.refutation_encoding);
           select =
             (function
             | Manager (Sc_rollup_refute _ as op) -> Some op | _ -> None);

@@ -35,6 +35,7 @@
         "Sc_rollup_repr",
         "Skip_list_repr",
         "Sc_rollup_inbox_repr",
+        "Sc_rollup_game_repr",
         "Seed_repr",
         "Sampler",
         "Voting_period_repr",
@@ -180,7 +181,6 @@
         "Script_interpreter",
         "Sc_rollup_operations",
         "Sc_rollup_PVM_sem",
-        "Sc_rollup_game",
         "Sc_rollup_arith",
         "Sc_rollups",
 
