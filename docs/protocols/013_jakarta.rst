@@ -1,6 +1,9 @@
 Protocol Jakarta
 ==================
 
+**Important: revision `PtJakarta...nGw` of protocol Jakarta contains bugs that
+have been corrected in the latest version `PtJakart2...SqY`**
+
 This page contains all the relevant information for protocol Jakarta
 (see :ref:`naming_convention`).
 
