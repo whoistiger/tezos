@@ -25,17 +25,18 @@
 
 open Clic
 
-let l2_addr_param =
-  Clic.parameter (fun _ s ->
-      match Tx_rollup_l2_address.of_b58check_opt s with
-      | Some addr -> return addr
-      | None -> failwith "The given L2 address is invalid")
-
-let l1_addr_param =
+let l1_destination_parameter =
   Clic.parameter (fun _ s ->
       match Signature.Public_key_hash.of_b58check_opt s with
       | Some addr -> return addr
-      | None -> failwith "The given L1 address is invalid")
+      | None -> failwith "cannot parse %s to get a valid destination" s)
+
+let l2_destination_parameter =
+  let open Lwt_result_syntax in
+  Clic.parameter (fun _ s ->
+      match Tx_rollup_l2_address.of_b58check_opt s with
+      | Some pkh -> return pkh
+      | None -> failwith "cannot parse %s to get a valid destination" s)
 
 let parse_file parse path =
   Lwt_utils_unix.read_file path >>= fun contents -> parse contents
@@ -64,9 +65,29 @@ let block_id_param =
       | Ok v -> return v
       | Error e -> failwith "%s" e)
 
-let parse_ticket =
+let secret_key_parameter =
+  let open Lwt_result_syntax in
   Clic.parameter (fun _ s ->
-      return (Alpha_context.Ticket_hash.of_b58check_exn s))
+      match Bls.Secret_key.of_b58check_opt s with
+      | Some sk -> return sk
+      | None -> failwith "cannot parse %s to get a valid BLS secret key" s)
+
+let signer_parameter =
+  let open Lwt_result_syntax in
+  Clic.parameter (fun _ s ->
+      match Tx_rollup_l2_address.of_b58check_opt s with
+      | Some pkh -> return @@ Tx_rollup_l2_batch.L2_addr pkh
+      | None -> (
+          match Bls.Public_key.of_b58check_opt s with
+          | Some pk -> return @@ Tx_rollup_l2_batch.Bls_pk pk
+          | None -> failwith "cannot parse %s to get a valid signer" s))
+
+let ticket_hash_parameter =
+  let open Lwt_result_syntax in
+  Clic.parameter (fun _ s ->
+      match Alpha_context.Ticket_hash.of_b58check_opt s with
+      | Some tkh -> return tkh
+      | None -> failwith "cannot parse %s to get a valid ticket_hash" s)
 
 let get_tx_address_balance_command () =
   command
@@ -82,12 +103,12 @@ let get_tx_address_balance_command () =
     @@ param
          ~name:"tz4"
          ~desc:"tz4 address from which the balance is queried"
-         l2_addr_param
+         l2_destination_parameter
     @@ prefixes ["of"]
     @@ param
          ~name:"ticket-hash"
          ~desc:"ticket from which the balance is expected"
-         parse_ticket
+         ticket_hash_parameter
     @@ stop)
     (fun block tz4 ticket (cctxt : #Configuration.tx_client_context) ->
       RPC.balance cctxt block ticket tz4 >>=? fun value ->
@@ -290,9 +311,12 @@ let craft_tx_transaction () =
     @@ prefixes ["from"]
     @@ param ~name:"signer_pk" ~desc:"public key of the signer" conv_pk
     @@ prefixes ["to"]
-    @@ param ~name:"dest" ~desc:"tz4 destination address" l2_addr_param
+    @@ param
+         ~name:"dest"
+         ~desc:"tz4 destination address"
+         l2_destination_parameter
     @@ prefixes ["for"]
-    @@ param ~name:"ticket" ~desc:"ticket to transfer" parse_ticket
+    @@ param ~name:"ticket" ~desc:"ticket to transfer" ticket_hash_parameter
     @@ stop)
     (fun counter
          qty
@@ -325,9 +349,12 @@ let craft_tx_withdrawal () =
     @@ prefixes ["from"]
     @@ param ~name:"signer_pk" ~desc:"public key of the signer" conv_pk
     @@ prefixes ["to"]
-    @@ param ~name:"dest" ~desc:"L1 destination address" l1_addr_param
+    @@ param
+         ~name:"dest"
+         ~desc:"L1 destination address"
+         l1_destination_parameter
     @@ prefixes ["for"]
-    @@ param ~name:"ticket" ~desc:"ticket to withdraw" parse_ticket
+    @@ param ~name:"ticket" ~desc:"ticket to withdraw" ticket_hash_parameter
     @@ stop)
     (fun counter
          qty
@@ -463,6 +490,84 @@ let inject_batcher_transaction () =
       cctxt#message "@[%s@]" (Data_encoding.Json.to_string json) >>= fun () ->
       return_unit)
 
+let transfer () =
+  let open Lwt_result_syntax in
+  command
+    ~desc:"submit a layer-2 transfer to a rollup node’s batcher"
+    (args2
+       (arg
+          ~long:"secret-key"
+          ~placeholder:"sk"
+          ~doc:"A BLS secret key"
+          secret_key_parameter)
+       (arg
+          ~long:"counter"
+          ~short:'c'
+          ~placeholder:"counter"
+          ~doc:"The counter associated to the signer address"
+          conv_counter))
+    (prefix "transfer"
+    @@ param ~name:"qty" ~desc:"qty to transfer" conv_qty
+    @@ prefix "of"
+    @@ param ~name:"ticket" ~desc:"A ticket hash" ticket_hash_parameter
+    @@ prefix "from"
+    @@ param
+         ~name:"source"
+         ~desc:"A BLS public key or a BLS public key hash"
+         signer_parameter
+    @@ prefix "to"
+    @@ param
+         ~name:"destination"
+         ~desc:"A BLS public key"
+         l2_destination_parameter
+    @@ stop)
+    (fun (sk, counter) qty ticket_hash signer destination cctxt ->
+      let signer_to_address :
+          Tx_rollup_l2_batch.signer -> Tx_rollup_l2_address.t = function
+        | Bls_pk pk -> Tx_rollup_l2_address.of_bls_pk pk
+        | L2_addr addr -> addr
+      in
+      let open Tx_rollup_l2_batch.V1 in
+      let* sk =
+        match sk with
+        | Some sk -> return sk
+        | None -> failwith "Missing secret key argument"
+      in
+      let* counter =
+        match counter with
+        | Some counter -> return counter
+        | None ->
+            let+ counter = RPC.counter cctxt `Head (signer_to_address signer) in
+            Int64.succ counter
+      in
+      (* TODO/TORU: https://gitlab.com/tezos/tezos/-/issues/2903
+         Use an RPC to know whether or not it can be safely replaced by
+         an index. *)
+      let signer = Indexable.from_value signer in
+      (* TODO/TORU: https://gitlab.com/tezos/tezos/-/issues/2903
+         Use an RPC to know whether or not it can be safely replaced by
+         an index. *)
+      let destination = Indexable.from_value destination in
+      (* TODO/TORU: https://gitlab.com/tezos/tezos/-/issues/2903
+         Use an RPC to know whether or not it can be safely replaced by
+         an index. *)
+      let ticket_hash = Indexable.from_value ticket_hash in
+      let contents = [Transfer {destination; ticket_hash; qty}] in
+      let operation = Tx_rollup_l2_batch.V1.{counter; signer; contents} in
+      let transaction = [operation] in
+      let* signature =
+        match
+          Bls.aggregate_signature_opt @@ sign_transaction [sk] transaction
+        with
+        | Some signature -> return signature
+        | None -> failwith "Could not aggregate signatures together"
+      in
+      let* hash = RPC.inject_transaction cctxt {transaction; signature} in
+      let*! () =
+        cctxt#message "Transaction hash: %a" L2_transaction.Hash.pp hash
+      in
+      return_unit)
+
 let all () =
   [
     get_tx_address_balance_command ();
@@ -475,4 +580,5 @@ let all () =
     get_batcher_queue ();
     get_batcher_transaction ();
     inject_batcher_transaction ();
+    transfer ();
   ]
