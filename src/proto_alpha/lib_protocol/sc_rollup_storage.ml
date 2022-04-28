@@ -819,7 +819,9 @@ let update_game ctxt rollup ~player ~opponent refutation =
     if Sc_rollup_repr.Staker.equal turn player then return ()
     else fail Sc_rollup_wrong_turn
   in
-  match Sc_rollup_game_repr.play game refutation with
+  let* pvm_ops = lookup_pvm rollup in
+  let* move_result = Sc_rollup_game_repr.play pvm_ops game refutation in
+  match move_result with
   | Either.Left outcome -> return (Some outcome, ctxt)
   | Either.Right new_game ->
       let* (ctxt, _) = Store.Game.update (ctxt, rollup) (alice, bob) new_game in

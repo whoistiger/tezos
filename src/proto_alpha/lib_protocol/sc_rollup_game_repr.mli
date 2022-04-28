@@ -124,6 +124,12 @@
 
 open Sc_rollup_repr
 
+(** XXX: ... *)
+type pvm_ops = {
+  eval : string option -> Context.tree -> (Context.tree * unit) Lwt.t;
+  expect_input : Context.tree -> (Context.tree * (int * int) option) Lwt.t;
+}
+
 (** Currently, [Proof] is a dummy type with the structure we need, set
     up to allow testing. *)
 module Proof : sig
@@ -145,12 +151,20 @@ module Proof : sig
       of this [Proof] will be [None]. *)
   type t =
     | Computation_step of {
-        valid : bool;
-        start : State_hash.t;
-        stop : State_hash.t;
+        step : Context.Proof.tree Context.Proof.t;
+        not_input : Context.Proof.tree Context.Proof.t;
       }
-    | Input_step of {valid : bool; start : State_hash.t; stop : State_hash.t}
-    | Blocked_step of {valid : bool; start : State_hash.t}
+    | Input_step of {
+        step : Context.Proof.tree Context.Proof.t;
+        input : Context.Proof.tree Context.Proof.t;
+        next : Sc_rollup_inbox_repr.inclusion_proof;
+        inclusion : Sc_rollup_inbox_repr.inclusion_proof;
+      }
+    | Blocked_step of {
+        input : Context.Proof.tree Context.Proof.t;
+        no_next : Sc_rollup_inbox_repr.inclusion_proof;
+        inclusion : Sc_rollup_inbox_repr.inclusion_proof;
+      }
 
   val encoding : t Data_encoding.t
 
@@ -163,7 +177,8 @@ module Proof : sig
   val stop : t -> State_hash.t option
 
   (** Check the validity of a proof *)
-  val valid : t -> bool
+  val valid :
+    pvm_ops -> Sc_rollup_inbox_repr.t -> t -> (bool, unit) result Lwt.t
 end
 
 (** The two stakers index the game in the storage as a pair of public
@@ -315,4 +330,4 @@ val outcome_encoding : outcome Data_encoding.t
     In the case of the game continuing, this swaps the current
     player and updates the [dissection]. In the case of a [Proof]
     being provided this returns an [outcome]. *)
-val play : t -> refutation -> (outcome, t) Either.t
+val play : pvm_ops -> t -> refutation -> (outcome, t) Either.t Lwt.t

@@ -26,17 +26,28 @@
 
 open Sc_rollup_repr
 
+type pvm_ops = {
+  eval : string option -> Context.tree -> (Context.tree * unit) Lwt.t;
+  expect_input : Context.tree -> (Context.tree * (int * int) option) Lwt.t;
+}
+
 module Proof = struct
-  (* TODO: #2759 these proof cases are dummy ones for testing. Replace
-     them with the proper proofs. *)
   type t =
     | Computation_step of {
-        valid : bool;
-        start : State_hash.t;
-        stop : State_hash.t;
+        step : Context.Proof.tree Context.Proof.t;
+        not_input : Context.Proof.tree Context.Proof.t;
       }
-    | Input_step of {valid : bool; start : State_hash.t; stop : State_hash.t}
-    | Blocked_step of {valid : bool; start : State_hash.t}
+    | Input_step of {
+        step : Context.Proof.tree Context.Proof.t;
+        input : Context.Proof.tree Context.Proof.t;
+        next : Sc_rollup_inbox_repr.inclusion_proof;
+        inclusion : Sc_rollup_inbox_repr.inclusion_proof;
+      }
+    | Blocked_step of {
+        input : Context.Proof.tree Context.Proof.t;
+        no_next : Sc_rollup_inbox_repr.inclusion_proof;
+        inclusion : Sc_rollup_inbox_repr.inclusion_proof;
+      }
 
   let encoding =
     Data_encoding.(
@@ -46,52 +57,92 @@ module Proof = struct
           case
             ~title:"Proof of a normal computation step"
             (Tag 0)
-            (tup3 bool State_hash.encoding State_hash.encoding)
+            (tup2
+               Context.Proof_encoding.V2.Tree32.tree_proof_encoding
+               Context.Proof_encoding.V2.Tree32.tree_proof_encoding)
             (function
-              | Computation_step {valid; start; stop} ->
-                  Some (valid, start, stop)
+              | Computation_step {step; not_input} -> Some (step, not_input)
               | _ -> None)
-            (fun (valid, start, stop) -> Computation_step {valid; start; stop});
+            (fun (step, not_input) -> Computation_step {step; not_input});
           case
             ~title:"Proof of an input step"
             (Tag 1)
-            (tup3 bool State_hash.encoding State_hash.encoding)
+            (tup4
+               Context.Proof_encoding.V2.Tree32.tree_proof_encoding
+               Context.Proof_encoding.V2.Tree32.tree_proof_encoding
+               Sc_rollup_inbox_repr.inclusion_proof_encoding
+               Sc_rollup_inbox_repr.inclusion_proof_encoding)
             (function
-              | Input_step {valid; start; stop} -> Some (valid, start, stop)
+              | Input_step {step; input; next; inclusion} ->
+                  Some (step, input, next, inclusion)
               | _ -> None)
-            (fun (valid, start, stop) -> Input_step {valid; start; stop});
+            (fun (step, input, next, inclusion) ->
+              Input_step {step; input; next; inclusion});
           case
             ~title:"Proof that the PVM is blocked"
             (Tag 2)
-            (tup2 bool State_hash.encoding)
+            (tup3
+               Context.Proof_encoding.V2.Tree32.tree_proof_encoding
+               Sc_rollup_inbox_repr.inclusion_proof_encoding
+               Sc_rollup_inbox_repr.inclusion_proof_encoding)
             (function
-              | Blocked_step {valid; start} -> Some (valid, start) | _ -> None)
-            (fun (valid, start) -> Blocked_step {valid; start});
+              | Blocked_step {input; no_next; inclusion} ->
+                  Some (input, no_next, inclusion)
+              | _ -> None)
+            (fun (input, no_next, inclusion) ->
+              Blocked_step {input; no_next; inclusion});
         ])
 
   (* TODO: #2759 *)
   let pp _ _ = ()
 
-  (* TODO: #2759 *)
   let start p =
     match p with
-    | Computation_step x -> x.start
-    | Input_step x -> x.start
-    | Blocked_step x -> x.start
+    | Computation_step x -> State_hash.of_kinded_hash x.step.before
+    | Input_step x -> State_hash.of_kinded_hash x.step.before
+    | Blocked_step x -> State_hash.of_kinded_hash x.input.before
 
-  (* TODO: #2759 *)
   let stop p =
     match p with
-    | Computation_step x -> Some x.stop
-    | Input_step x -> Some x.stop
+    | Computation_step x -> Some (State_hash.of_kinded_hash x.step.after)
+    | Input_step x -> Some (State_hash.of_kinded_hash x.step.after)
     | Blocked_step _ -> None
 
-  (* TODO: #2759 *)
-  let valid p =
-    match p with
-    | Computation_step x -> x.valid
-    | Input_step x -> x.valid
-    | Blocked_step x -> x.valid
+  let kinded_hash_equal a b =
+    match (a, b) with
+    | (`Node x, `Node y) -> Context_hash.equal x y
+    | (`Value x, `Value y) -> Context_hash.equal x y
+    | _ -> false
+
+  let valid pvm_ops _inbox p =
+    let result =
+      let open Lwt_result_syntax in
+      match p with
+      | Computation_step x ->
+          let hashes_match =
+            kinded_hash_equal x.step.before x.not_input.before
+          in
+          let* _ = Context.verify_tree_proof x.step (pvm_ops.eval None) in
+          let* (_, not_input_result) =
+            Context.verify_tree_proof x.not_input pvm_ops.expect_input
+          in
+          return (hashes_match && Option.is_none not_input_result)
+      | Input_step x ->
+          let hashes_match = kinded_hash_equal x.step.before x.input.before in
+          let* _ = Context.verify_tree_proof x.step (pvm_ops.eval (Some "")) in
+          let* (_, input_location) =
+            Context.verify_tree_proof x.input pvm_ops.expect_input
+          in
+          let* _ =
+            match input_location with
+            | None -> return ()
+            | Some (_level, _counter) -> return ()
+          in
+          return hashes_match
+      | Blocked_step _ -> return false
+    in
+    (* XXX: should we translate the error somehow? *)
+    Lwt.map (Result.map_error (fun _ -> ())) result
 end
 
 type player = Alice | Bob
@@ -381,20 +432,20 @@ let outcome_encoding =
     the current dissection interval (including the two states) between
     this tick and the next. *)
 let find_choice game tick =
-  let open Result_syntax in
+  let open Lwt_result_syntax in
   let rec traverse states =
     match states with
     | (state, state_tick) :: (next_state, next_tick) :: others ->
         if Sc_rollup_tick_repr.(tick = state_tick) then
           return (state, tick, next_state, next_tick)
         else traverse ((next_state, next_tick) :: others)
-    | _ -> error ()
+    | _ -> fail ()
   in
   traverse game.dissection
 
 let check pred =
-  let open Result_syntax in
-  if pred then return () else error ()
+  let open Lwt_result_syntax in
+  if pred then return () else fail ()
 
 (** We check firstly that [dissection] is the correct length. It must be
     32 values long, unless the distance between [start_tick] and
@@ -410,13 +461,13 @@ let check pred =
     ordered the ticks, and it contains no [None] states except for
     possibly the last one. *)
 let check_dissection start start_tick stop stop_tick dissection =
-  let open Result_syntax in
+  let open Lwt_result_syntax in
   let len = Z.of_int @@ List.length dissection in
   let dist = Sc_rollup_tick_repr.distance start_tick stop_tick in
   let* _ =
     if Z.(geq dist (of_int 32)) then check Z.(equal len (of_int 32))
     else if Z.(gt dist one) then check Z.(equal len (succ dist))
-    else error ()
+    else fail ()
   in
   let* _ =
     match (List.hd dissection, List.last_opt dissection) with
@@ -425,15 +476,15 @@ let check_dissection start start_tick stop stop_tick dissection =
           (Option.equal State_hash.equal a start
           && (not (Option.equal State_hash.equal b stop))
           && Sc_rollup_tick_repr.(a_tick = start_tick && b_tick = stop_tick))
-    | _ -> error ()
+    | _ -> fail ()
   in
   let rec traverse states =
     match states with
     | (Some _, tick) :: (next_state, next_tick) :: others ->
         if Sc_rollup_tick_repr.(tick < next_tick) then
           traverse ((next_state, next_tick) :: others)
-        else error ()
-    | (None, _) :: _ :: _ -> error ()
+        else fail ()
+    | (None, _) :: _ :: _ -> fail ()
     | _ -> return ()
   in
   traverse dissection
@@ -444,17 +495,20 @@ let check_dissection start start_tick stop stop_tick dissection =
     with a different state to the one in the current dissection.
     
     Finally, we check that the proof itself is valid. *)
-let check_proof start start_tick stop stop_tick proof =
+let check_proof pvm_ops inbox start start_tick stop stop_tick proof =
+  let open Lwt_result_syntax in
   let dist = Sc_rollup_tick_repr.distance start_tick stop_tick in
-  check
-    (Z.(equal dist one)
-    && Option.equal State_hash.equal start (Some (Proof.start proof))
-    && (not (Option.equal State_hash.equal stop (Proof.stop proof)))
-    && Proof.valid proof)
+  let* _ =
+    check
+      (Z.(equal dist one)
+      && Option.equal State_hash.equal start (Some (Proof.start proof))
+      && not (Option.equal State_hash.equal stop (Proof.stop proof)))
+  in
+  Proof.valid pvm_ops inbox proof
 
-let play game refutation =
+let play pvm_ops game refutation =
   let result =
-    let open Result_syntax in
+    let open Lwt_result_syntax in
     let* (start, start_tick, stop, stop_tick) =
       find_choice game refutation.choice
     in
@@ -469,10 +523,22 @@ let play game refutation =
                dissection = states;
              })
     | Proof proof ->
-        let* _ = check_proof start start_tick stop stop_tick proof in
+        let* _ =
+          check_proof
+            pvm_ops
+            game.inbox_snapshot
+            start
+            start_tick
+            stop
+            stop_tick
+            proof
+        in
         return
           (Either.Left {loser = opponent game.turn; reason = Conflict_resolved})
   in
-  match Option.of_result result with
-  | Some x -> x
-  | None -> Either.Left {loser = game.turn; reason = Invalid_move}
+  Lwt.map
+    (fun r ->
+      match Option.of_result r with
+      | Some x -> x
+      | None -> Either.Left {loser = game.turn; reason = Invalid_move})
+    result

@@ -133,6 +133,10 @@ module State_hash = struct
 
   include H
 
+  let of_kinded_hash (k_hash : Context.Proof.kinded_hash) =
+    match k_hash with
+    | `Value hash | `Node hash -> hash_bytes [Context_hash.to_bytes hash]
+
   let () = Base58.check_encoded_prefix b58check_encoding prefix encoded_size
 
   include Path_encoding.Make_hex (H)

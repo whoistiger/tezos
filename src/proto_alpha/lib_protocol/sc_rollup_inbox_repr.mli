@@ -237,6 +237,8 @@ module type MerkelizedOperations = sig
      The size of this proof is O(log_basis (L' - L)). *)
   type inclusion_proof
 
+  val inclusion_proof_encoding : inclusion_proof Data_encoding.t
+
   val pp_inclusion_proof : Format.formatter -> inclusion_proof -> unit
 
   (** [number_of_proof_steps proof] returns the length of [proof]. *)

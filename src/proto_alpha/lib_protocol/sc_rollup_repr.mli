@@ -58,7 +58,21 @@ end
 
 module Commitment_hash : S.HASH
 
-module State_hash : S.HASH
+module State_hash : sig
+  include S.HASH
+
+  (** XXX: I'm not entirely sure I've done the right thing here.
+  
+      We need a way of converting a [kinded_hash] which is what will
+      appear in a [Context.Proof.t] into a [State_hash.t]. What I've
+      done here re-hashes the hash---I can't see a nicer way of doing
+      what I want, but I must admit I find all these hash modules rather
+      mysterious.
+      
+      I felt a bit better about this once I discovered a function in the
+      arith PVM doing the same thing, but I'm still not completely sure. *)
+  val of_kinded_hash : Context.Proof.kinded_hash -> t
+end
 
 (** Number of messages consumed by a single commitment. This represents a claim
     about the shape of the Inbox, which can be disputed as part of a commitment
