@@ -59,6 +59,8 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    sc_rollup_repr.mli sc_rollup_repr.ml
    skip_list_repr.mli skip_list_repr.ml
    sc_rollup_inbox_repr.mli sc_rollup_inbox_repr.ml
+   sc_rollup_tick_repr.mli sc_rollup_tick_repr.ml
+   sc_rollup_game_repr.mli sc_rollup_game_repr.ml
    seed_repr.mli seed_repr.ml
    sampler.mli sampler.ml
    voting_period_repr.mli voting_period_repr.ml
@@ -99,7 +101,6 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    lazy_storage_kind.mli lazy_storage_kind.ml
    receipt_repr.mli receipt_repr.ml
    migration_repr.mli migration_repr.ml
-   sc_rollup_tick_repr.mli sc_rollup_tick_repr.ml
    carbonated_map_costs.mli carbonated_map_costs.ml
    carbonated_map.mli carbonated_map.ml
    raw_context_intf.ml
@@ -192,7 +193,6 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    script_interpreter.mli script_interpreter.ml
    sc_rollup_operations.mli sc_rollup_operations.ml
    sc_rollup_PVM_sem.ml
-   sc_rollup_game.mli sc_rollup_game.ml
    sc_rollup_arith.mli sc_rollup_arith.ml
    sc_rollups.mli sc_rollups.ml
    baking.mli baking.ml
@@ -246,6 +246,8 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    sc_rollup_repr.mli sc_rollup_repr.ml
    skip_list_repr.mli skip_list_repr.ml
    sc_rollup_inbox_repr.mli sc_rollup_inbox_repr.ml
+   sc_rollup_tick_repr.mli sc_rollup_tick_repr.ml
+   sc_rollup_game_repr.mli sc_rollup_game_repr.ml
    seed_repr.mli seed_repr.ml
    sampler.mli sampler.ml
    voting_period_repr.mli voting_period_repr.ml
@@ -286,7 +288,6 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    lazy_storage_kind.mli lazy_storage_kind.ml
    receipt_repr.mli receipt_repr.ml
    migration_repr.mli migration_repr.ml
-   sc_rollup_tick_repr.mli sc_rollup_tick_repr.ml
    carbonated_map_costs.mli carbonated_map_costs.ml
    carbonated_map.mli carbonated_map.ml
    raw_context_intf.ml
@@ -379,7 +380,6 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    script_interpreter.mli script_interpreter.ml
    sc_rollup_operations.mli sc_rollup_operations.ml
    sc_rollup_PVM_sem.ml
-   sc_rollup_game.mli sc_rollup_game.ml
    sc_rollup_arith.mli sc_rollup_arith.ml
    sc_rollups.mli sc_rollups.ml
    baking.mli baking.ml
@@ -433,6 +433,8 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    sc_rollup_repr.mli sc_rollup_repr.ml
    skip_list_repr.mli skip_list_repr.ml
    sc_rollup_inbox_repr.mli sc_rollup_inbox_repr.ml
+   sc_rollup_tick_repr.mli sc_rollup_tick_repr.ml
+   sc_rollup_game_repr.mli sc_rollup_game_repr.ml
    seed_repr.mli seed_repr.ml
    sampler.mli sampler.ml
    voting_period_repr.mli voting_period_repr.ml
@@ -473,7 +475,6 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    lazy_storage_kind.mli lazy_storage_kind.ml
    receipt_repr.mli receipt_repr.ml
    migration_repr.mli migration_repr.ml
-   sc_rollup_tick_repr.mli sc_rollup_tick_repr.ml
    carbonated_map_costs.mli carbonated_map_costs.ml
    carbonated_map.mli carbonated_map.ml
    raw_context_intf.ml
@@ -566,7 +567,6 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    script_interpreter.mli script_interpreter.ml
    sc_rollup_operations.mli sc_rollup_operations.ml
    sc_rollup_PVM_sem.ml
-   sc_rollup_game.mli sc_rollup_game.ml
    sc_rollup_arith.mli sc_rollup_arith.ml
    sc_rollups.mli sc_rollups.ml
    baking.mli baking.ml
@@ -642,6 +642,8 @@ include Tezos_raw_protocol_alpha.Main
    Sc_rollup_repr
    Skip_list_repr
    Sc_rollup_inbox_repr
+   Sc_rollup_tick_repr
+   Sc_rollup_game_repr
    Seed_repr
    Sampler
    Voting_period_repr
@@ -682,7 +684,6 @@ include Tezos_raw_protocol_alpha.Main
    Lazy_storage_kind
    Receipt_repr
    Migration_repr
-   Sc_rollup_tick_repr
    Carbonated_map_costs
    Carbonated_map
    Raw_context_intf
@@ -775,7 +776,6 @@ include Tezos_raw_protocol_alpha.Main
    Script_interpreter
    Sc_rollup_operations
    Sc_rollup_PVM_sem
-   Sc_rollup_game
    Sc_rollup_arith
    Sc_rollups
    Baking
@@ -870,6 +870,8 @@ include Tezos_raw_protocol_alpha.Main
    sc_rollup_repr.mli sc_rollup_repr.ml
    skip_list_repr.mli skip_list_repr.ml
    sc_rollup_inbox_repr.mli sc_rollup_inbox_repr.ml
+   sc_rollup_tick_repr.mli sc_rollup_tick_repr.ml
+   sc_rollup_game_repr.mli sc_rollup_game_repr.ml
    seed_repr.mli seed_repr.ml
    sampler.mli sampler.ml
    voting_period_repr.mli voting_period_repr.ml
@@ -910,7 +912,6 @@ include Tezos_raw_protocol_alpha.Main
    lazy_storage_kind.mli lazy_storage_kind.ml
    receipt_repr.mli receipt_repr.ml
    migration_repr.mli migration_repr.ml
-   sc_rollup_tick_repr.mli sc_rollup_tick_repr.ml
    carbonated_map_costs.mli carbonated_map_costs.ml
    carbonated_map.mli carbonated_map.ml
    raw_context_intf.ml
@@ -1003,7 +1004,6 @@ include Tezos_raw_protocol_alpha.Main
    script_interpreter.mli script_interpreter.ml
    sc_rollup_operations.mli sc_rollup_operations.ml
    sc_rollup_PVM_sem.ml
-   sc_rollup_game.mli sc_rollup_game.ml
    sc_rollup_arith.mli sc_rollup_arith.ml
    sc_rollups.mli sc_rollups.ml
    baking.mli baking.ml
