@@ -85,7 +85,7 @@ end) : TestPVM with type state = int = struct
   let proof_start_state ((a, _) : proof) =
     State_hash.hash_string [Int.to_string a]
 
-  let proof_stop_state (_, a) = State_hash.hash_string [Int.to_string a]
+  let proof_stop_state (_, a) = Some (State_hash.hash_string [Int.to_string a])
 
   let state_hash (x : state) =
     Lwt.return (State_hash.hash_string [Int.to_string x])
@@ -136,7 +136,7 @@ end) : TestPVM with type state = string * int list = struct
 
   let proof_start_state (a, _) = State_hash.hash_string [to_string a]
 
-  let proof_stop_state (_, a) = State_hash.hash_string [to_string a]
+  let proof_stop_state (_, a) = Some (State_hash.hash_string [to_string a])
 
   let state_hash (x : state) =
     Lwt.return @@ State_hash.hash_string [to_string x]
@@ -267,10 +267,11 @@ module Strategies (P : TestPVM) = struct
             state_at history section_start_at P.Internal_for_tests.initial_state
           in
           let* section_start_state = P.state_hash starting_state in
-          let* (stoping_state, history) =
+          let* (stopping_state, history) =
             state_at history section_stop_at P.Internal_for_tests.initial_state
           in
-          let* section_stop_state = P.state_hash stoping_state in
+          let* section_stop_state = P.state_hash stopping_state in
+          let section_stop_state = Some section_stop_state in
 
           let section =
             {
@@ -296,9 +297,7 @@ module Strategies (P : TestPVM) = struct
 
   let run ~start_at ~(start_state : PVM.state) ~committer ~refuter =
     let* (Commit commit) = committer.initial (start_at, start_state) in
-    let* (RefuteByConflict refutation) =
-      refuter.initial (start_state, Commit commit)
-    in
+    let* refutation = refuter.initial (start_state, Commit commit) in
     let outcome =
       let rec loop game move =
         play game move >>= function
@@ -307,16 +306,8 @@ module Strategies (P : TestPVM) = struct
             let game = {game with turn = opponent game.turn} in
             let* move =
               match game.turn with
-              | Committer ->
-                  committer.next_move
-                    (Option.value
-                       ~default:Game.Section.empty_dissection
-                       game.current_dissection)
-              | Refuter ->
-                  refuter.next_move
-                    (Option.value
-                       ~default:Game.Section.empty_dissection
-                       game.current_dissection)
+              | Committer -> committer.next_move game.current_dissection
+              | Refuter -> refuter.next_move game.current_dissection
             in
             loop game move
       in
@@ -353,6 +344,8 @@ module Strategies (P : TestPVM) = struct
       P.Internal_for_tests.(random_state length initial_state)
     in
     let* section_stop_state = P.state_hash random_stop_state in
+    (* TODO #2758: test the case of stop state being None *)
+    let section_stop_state = Some section_stop_state in
     Lwt.return
       Section.
         {
@@ -381,7 +374,9 @@ module Strategies (P : TestPVM) = struct
           aux
             (Section.add_section section dissection)
             section.section_stop_at
-            section.section_stop_state
+            (match section.section_stop_state with
+            | Some hash -> hash
+            | None -> assert false)
     in
     if
       Compare.Int.(
@@ -429,6 +424,7 @@ module Strategies (P : TestPVM) = struct
         random_state (section_stop_at - section_start_at) initial_state)
     in
     let* section_stop_state = P.state_hash stop_state in
+    let section_stop_state = Some section_stop_state in
 
     let* next_dissection = random_dissection section in
     let section =
@@ -473,7 +469,7 @@ module Strategies (P : TestPVM) = struct
         P.Internal_for_tests.initial_state
     in
     let* new_hash = P.state_hash new_state in
-    Lwt.return @@ not (section.section_stop_state = new_hash)
+    Lwt.return @@ not (section.section_stop_state = Some new_hash)
 
   (**
   Finds the section (if it exists) is a dissection that conflicts
@@ -536,6 +532,7 @@ module Strategies (P : TestPVM) = struct
               P.Internal_for_tests.initial_state
           in
           let* stop_state = P.state_hash state in
+          let stop_state = Some stop_state in
           Lwt.return (Refine {stop_state; next_dissection}, history)
     in
     Lwt.return
@@ -551,6 +548,7 @@ module Strategies (P : TestPVM) = struct
       in
       let* section_start_state = P.state_hash start_state in
       let* section_stop_state = P.state_hash stop_state in
+      let section_stop_state = Some section_stop_state in
       history := remember !history section_start_at start_state ;
       history := remember !history section_stop_at stop_state ;
       Lwt.return
@@ -585,6 +583,7 @@ module Strategies (P : TestPVM) = struct
       let history = remember history section_start_at section_start_state in
       let history = remember history section_stop_at stop_state in
       let* section_stop_state = P.state_hash stop_state in
+      let section_stop_state = Some section_stop_state in
       let* (next_dissection, history) =
         dissection_of_section
           history
@@ -800,6 +799,7 @@ let test_random_dissection (module P : TestPVM) start_at length branching =
   let* section_stop_state =
     P.state_hash @@ Internal_for_tests.(random_state length initial_state)
   in
+  let section_stop_state = Some section_stop_state in
   let section =
     S.Game.Section.
       {

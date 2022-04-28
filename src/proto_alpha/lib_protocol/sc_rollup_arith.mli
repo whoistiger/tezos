@@ -125,7 +125,7 @@ module type P = sig
 
   val proof_start_state : proof -> Sc_rollup.State_hash.t
 
-  val proof_stop_state : proof -> Sc_rollup.State_hash.t
+  val proof_stop_state : proof -> Sc_rollup.State_hash.t option
 
   val verify_proof :
     proof ->
