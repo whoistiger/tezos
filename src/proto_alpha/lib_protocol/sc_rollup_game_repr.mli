@@ -311,5 +311,5 @@ val outcome_encoding : outcome Data_encoding.t
     
     In the case of the game continuing, this swaps the current
     player and updates the [dissection]. In the case of a [Proof]
-    being provided this returns a [Conflict_resolved] outcome. *)
+    being provided this returns an [outcome]. *)
 val play : t -> refutation -> (outcome, t) Either.t
