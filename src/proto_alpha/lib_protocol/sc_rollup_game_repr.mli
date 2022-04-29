@@ -296,9 +296,10 @@ val pp_status : Format.formatter -> status -> unit
 val status_encoding : status Data_encoding.t
 
 (** A game ends with a single [loser] and the [reason] for the game
-    ending. This type is 'internal' to the game logic, it uses
-    [Alice] or [Bob] to refer to the players without knowing which
-    stakers they are. *)
+    ending. This type uses [Alice] or [Bob] to refer to the players
+    without knowing which stakers they are---so it cannot identify an
+    actual staker who should be punished without the associated game
+    index. *)
 type outcome = {loser : player; reason : reason}
 
 val pp_outcome : Format.formatter -> outcome -> unit
