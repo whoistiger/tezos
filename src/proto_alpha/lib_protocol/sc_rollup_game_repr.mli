@@ -163,9 +163,9 @@ module Proof : sig
   val valid : t -> bool
 end
 
-(** The two stakers index the game in the storage, as an ordered pair
-    of public key hashes. We use [Alice] and [Bob] to represent the
-    first and second player respectively. *)
+(** The two stakers index the game in the storage as a pair of public
+    key hashes which is in lexical order. We use [Alice] and [Bob] to
+    represent the first and second player in the pair respectively. *)
 type player = Alice | Bob
 
 (**
