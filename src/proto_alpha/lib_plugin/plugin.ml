@@ -2940,7 +2940,7 @@ module RPC = struct
           ~output:Raw_level.encoding
           RPC_path.(path /: Sc_rollup.Address.rpc_arg / "initial_level")
 
-      let lcc =
+      let last_cemented_commitment =
         RPC_service.get_service
           ~description:
             "Level of the last cemented commitment for a smart-contract rollup"
@@ -2949,7 +2949,9 @@ module RPC = struct
             (obj2
                (req "hash" Sc_rollup.Commitment_hash.encoding)
                (req "level" Raw_level.encoding))
-          RPC_path.(path /: Sc_rollup.Address.rpc_arg / "lcc_hash_with_level")
+          RPC_path.(
+            path /: Sc_rollup.Address.rpc_arg
+            / "last_cemented_commitment_hash_with_level")
 
       let root =
         RPC_service.get_service
@@ -2985,13 +2987,16 @@ module RPC = struct
       @@ fun ctxt address () () ->
       Alpha_context.Sc_rollup.get_boot_sector ctxt address
 
-    let register_lcc_with_hash () =
-      Registration.register1 ~chunked:false S.lcc @@ fun ctxt address () () ->
+    let register_last_cemented_commitment_hash_with_level () =
+      Registration.register1 ~chunked:false S.last_cemented_commitment
+      @@ fun ctxt address () () ->
       let open Lwt_tzresult_syntax in
-      let+ (lcc, level, _ctxt) =
-        Alpha_context.Sc_rollup.lcc_hash_with_level ctxt address
+      let+ (last_cemented_commitment, level, _ctxt) =
+        Alpha_context.Sc_rollup.last_cemented_commitment_hash_with_level
+          ctxt
+          address
       in
-      (lcc, level)
+      (last_cemented_commitment, level)
 
     let register_root () =
       Registration.register0 ~chunked:true S.root (fun context () () ->
@@ -3002,7 +3007,7 @@ module RPC = struct
       register_inbox () ;
       register_initial_level () ;
       register_boot_sector () ;
-      register_lcc_with_hash () ;
+      register_last_cemented_commitment_hash_with_level () ;
       register_root ()
 
     let list ctxt block = RPC_context.make_call0 S.root ctxt block () ()

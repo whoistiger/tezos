@@ -750,10 +750,11 @@ module Sc_rollup = struct
     let path = path ~chain ~block ~sc_rollup_address @ ["boot_sector"] in
     Client.rpc ?endpoint ?hooks GET path client
 
-  let get_lcc_hash_with_level ?endpoint ?hooks ?(chain = "main")
-      ?(block = "head") ~sc_rollup_address client =
+  let get_last_cemented_commitment_hash_with_level ?endpoint ?hooks
+      ?(chain = "main") ?(block = "head") ~sc_rollup_address client =
     let path =
-      path ~chain ~block ~sc_rollup_address @ ["lcc_hash_with_level"]
+      path ~chain ~block ~sc_rollup_address
+      @ ["last_cemented_commitment_hash_with_level"]
     in
     Client.rpc ?endpoint ?hooks GET path client
 end
