@@ -27,7 +27,7 @@
 (** The smart contract rollup refutation game types are defined here, as
     well as the basic pure logic for:
 
-    - how to create a new game from a pair of commits in the commit tree
+    - how to create a new game from a pair of commits in the commit tree;
 
     - how to update a game or complete a game when a move is played.
 
@@ -38,8 +38,8 @@
     ====================
 
     At any given moment, the game stores a list [dissection] of state
-    hashes and tick counts. These are the claims made by the player who
-    has just moved about the PVM history.
+    hashes and tick counts. These are the claims about the PVM history
+    made by the player who has just moved.
 
     The next player to move will specify a tick count which appears in
     the [dissection]; this is the last of the state hashes which she

@@ -794,13 +794,9 @@ let update_game ctxt rollup ~refuter ~defender refutation =
   let (alice, bob) = Sc_rollup_game_repr.Index.normalize (refuter, defender) in
   let* (game, ctxt) = get_or_init_game ctxt rollup ~refuter ~defender in
   let* _ =
-    match game.turn with
-    | Alice ->
-        if Sc_rollup_repr.Staker.equal alice refuter then return ()
-        else fail Sc_rollup_wrong_turn
-    | Bob ->
-        if Sc_rollup_repr.Staker.equal bob refuter then return ()
-        else fail Sc_rollup_wrong_turn
+    let turn = match game.turn with Alice -> alice | Bob -> bob in
+    if Sc_rollup_repr.Staker.equal turn refuter then return ()
+    else fail Sc_rollup_wrong_turn
   in
   match Sc_rollup_game_repr.play game refutation with
   | Either.Left outcome -> return (Some outcome, ctxt)
