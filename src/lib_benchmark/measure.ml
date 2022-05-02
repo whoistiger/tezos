@@ -463,24 +463,22 @@ let cull_outliers :
 (* Benchmarking *)
 
 module Time = struct
-  (* The parameter of this function must have an 'unboxable' type for OCaml
-     and the compiler doesn't know how to unbox [unit], so we use [int32]... *)
-  external get_time_ns : int32 -> int64
+  external get_time_ns : unit -> (int64[@unboxed])
     = "caml_clock_gettime_byte" "caml_clock_gettime"
-    [@@unboxed] [@@noalloc]
+    [@@noalloc]
 
   let measure f =
-    let bef = get_time_ns 0l in
+    let bef = get_time_ns () in
     let _ = f () in
-    let aft = get_time_ns 0l in
+    let aft = get_time_ns () in
     let dt = Int64.(to_float (sub aft bef)) in
     dt
     [@@inline always]
 
   let measure_and_return f =
-    let bef = get_time_ns 0l in
+    let bef = get_time_ns () in
     let x = f () in
-    let aft = get_time_ns 0l in
+    let aft = get_time_ns () in
     let dt = Int64.(to_float (sub aft bef)) in
     (dt, x)
     [@@inline always]

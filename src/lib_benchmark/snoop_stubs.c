@@ -7,7 +7,7 @@
   #include <mach/mach_time.h>
 #endif
 
-CAMLprim int64_t caml_clock_gettime(int32_t _useless)
+CAMLprim int64_t caml_clock_gettime(value _useless)
 {
     #ifdef __MACH__
       uint64_t t = clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
@@ -25,5 +25,5 @@ CAMLprim int64_t caml_clock_gettime(int32_t _useless)
 
 CAMLprim value caml_clock_gettime_byte(value useless)
 {
-     return caml_copy_int64(caml_clock_gettime(Int32_val (useless)));
+     return caml_copy_int64(caml_clock_gettime(useless));
 }
