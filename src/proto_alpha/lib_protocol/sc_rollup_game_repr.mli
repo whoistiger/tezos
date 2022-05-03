@@ -136,7 +136,7 @@ module Proof : sig
       will include a proof that the machine is in a blocked state and a
       proof that the next message to be read is correct. The inbox proof
       part of this will refer to the [inbox_snapshot] stored in the game
-      type (see [Sc_rollup_game_repr.t]).
+      type (see {!Sc_rollup_game_repr.t}).
 
       [Blocked_step]: similar to an input step, this is a step where the
       machine is in a blocked state. However, it includes a proof that
