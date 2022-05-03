@@ -1330,7 +1330,12 @@ let tezos_context_sigs =
     "tezos-context.sigs"
     ~path:"src/lib_context/sigs"
     ~opam:"src/lib_context/tezos-context"
-    ~deps:[tezos_base |> open_ ~m:"TzPervasives"; tezos_stdlib |> open_]
+    ~deps:
+      [
+        tezos_base |> open_ ~m:"TzPervasives";
+        tezos_stdlib |> open_;
+        tezos_shell_services |> open_;
+      ]
 
 let tezos_context_encoding =
   public_lib
