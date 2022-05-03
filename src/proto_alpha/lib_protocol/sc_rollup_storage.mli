@@ -414,6 +414,13 @@ val initial_level :
     from the commitment pair belonging to [defender] at the conflict
     point. See [Sc_rollup_game_repr.initial] for documentation on how a
     pair of commitments is turned into an initial game state.
+
+    This also deals with the other bits of data in the storage around
+    the game. It checks neither staker is already in a game (and also
+    marks them as in a game once the new game is created). It also
+    initialises the timeout level to the current level plus
+    `timeout_period_in_blocks` (this marks the block level at which it
+    becomes possible for anyone to end the game by timeout).
     
     May fail with:
     {ul
