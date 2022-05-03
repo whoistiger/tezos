@@ -776,8 +776,8 @@ module Sc_rollup : sig
        and type t = Raw_context.t * Sc_rollup_repr.t
 
   (** Refutation games are indexed by the rollup and the pair of
-      competing stakers. The staker pair should always be ordered to
-      ensure that games are not duplicated.
+      competing stakers. The staker pair should always be in lexical
+      order to ensure that games are not duplicated.
   *)
   module Game :
     Non_iterable_indexed_carbonated_data_storage
@@ -787,8 +787,8 @@ module Sc_rollup : sig
 
   (** [Game_timeout] stores the block level at which the staker whose
       turn it is to move will (become vulnerable to) timeout. The staker
-      pair should always be ordered to ensure that this value is not
-      duplicated.
+      pair should always be in lexical order to ensure that this value is
+      not duplicated.
   *)
   module Game_timeout :
     Non_iterable_indexed_carbonated_data_storage
