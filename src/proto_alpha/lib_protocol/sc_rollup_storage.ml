@@ -807,6 +807,7 @@ let get_or_init_game ctxt rollup ~refuter ~defender =
       let* (ctxt, _) = Store.Opponent.init (ctxt, rollup) defender refuter in
       return (game, ctxt)
 
+(* TODO #2926: this requires carbonation *)
 let update_game ctxt rollup ~player ~opponent refutation =
   let open Lwt_tzresult_syntax in
   let (alice, bob) = Sc_rollup_game_repr.Index.normalize (player, opponent) in
@@ -830,6 +831,7 @@ let update_game ctxt rollup ~player ~opponent refutation =
       in
       return (None, ctxt)
 
+(* TODO #2926: this requires carbonation *)
 let timeout ctxt rollup stakers =
   let open Lwt_tzresult_syntax in
   let level = (Raw_context.current_level ctxt).level in
@@ -845,6 +847,7 @@ let timeout ctxt rollup stakers =
         return (Sc_rollup_game_repr.{loser = game.turn; reason = Timeout}, ctxt)
       else fail Sc_rollup_timeout_level_not_reached
 
+(* TODO #2926: this requires carbonation *)
 let apply_outcome ctxt rollup stakers (outcome : Sc_rollup_game_repr.outcome) =
   let open Lwt_tzresult_syntax in
   let (alice, bob) = Sc_rollup_game_repr.Index.normalize stakers in
