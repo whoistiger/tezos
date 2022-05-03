@@ -1,0 +1,30 @@
+(include_subdirs unqualified)
+
+(library
+ (name wasm_interpreter_lib)
+ (public_name wasm-interpreter-lib)
+ (modules :standard \ main))
+
+(executable
+ (name main)
+ (modules main)
+ (libraries wasm-interpreter-lib)
+ (flags
+  (-open Wasm_interpreter_lib)))
+
+(subdir
+ text
+ (rule
+  (target lexer.ml)
+  (deps lexer.mll)
+  (action
+   (chdir
+    %{workspace_root}
+    (run %{bin:ocamllex} -ml -q -o %{target} %{deps}))))
+ (ocamlyacc
+  (modules parser)))
+
+(env
+ (dev
+  (flags
+   (-w -27-8))))
