@@ -487,6 +487,8 @@ val inline_tests_backend : target -> inline_tests
 
     - [foreign_stubs]: specifies a [(foreign_stubs)] stanza for the [dune] target.
 
+    - [implements]: specifies an [(implements)] stanza for the [dune] target.
+
     - [inline_tests]: specifies an inline_tests backend. Can only be used when constructing a library.
       If used, will add [(inline_tests)] and the corresponding preprocessor in the dune stanza.
 
@@ -575,6 +577,11 @@ val inline_tests_backend : target -> inline_tests
 
     - [warnings]: the argument passed to the -w flag when building.
 
+    - [virtual_modules]: similar to [modules], but for modules that should have an
+      implementation (an [.ml] file) but that have not. Those modules only come
+      with an [.mli]. This turns the target into a virtual target.
+      Other targets can declare that they implement those modules with [implements].
+
     - [wrapped]: if [false], add the [(wrapped false)] stanza in the [dune] file.
       This causes the library to not come with a toplevel module with aliases to
       all other modules. Not recommended (according to the dune documentation).
@@ -588,6 +595,7 @@ type 'a maker =
   ?deps:target list ->
   ?dune:Dune.s_expr ->
   ?foreign_stubs:Dune.foreign_stubs ->
+  ?implements:target ->
   ?inline_tests:inline_tests ->
   ?js_compatible:bool ->
   ?js_of_ocaml:Dune.s_expr ->
@@ -614,6 +622,7 @@ type 'a maker =
   ?description:string ->
   ?time_measurement_ppx:bool ->
   ?warnings:string ->
+  ?virtual_modules:string list ->
   ?wrapped:bool ->
   ?cram:bool ->
   path:string ->
