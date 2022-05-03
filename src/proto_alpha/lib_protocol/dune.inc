@@ -60,6 +60,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    skip_list_repr.mli skip_list_repr.ml
    sc_rollup_inbox_repr.mli sc_rollup_inbox_repr.ml
    sc_rollup_tick_repr.mli sc_rollup_tick_repr.ml
+   sc_rollup_proof_repr.mli sc_rollup_proof_repr.ml
    sc_rollup_game_repr.mli sc_rollup_game_repr.ml
    seed_repr.mli seed_repr.ml
    sampler.mli sampler.ml
@@ -247,6 +248,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    skip_list_repr.mli skip_list_repr.ml
    sc_rollup_inbox_repr.mli sc_rollup_inbox_repr.ml
    sc_rollup_tick_repr.mli sc_rollup_tick_repr.ml
+   sc_rollup_proof_repr.mli sc_rollup_proof_repr.ml
    sc_rollup_game_repr.mli sc_rollup_game_repr.ml
    seed_repr.mli seed_repr.ml
    sampler.mli sampler.ml
@@ -434,6 +436,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    skip_list_repr.mli skip_list_repr.ml
    sc_rollup_inbox_repr.mli sc_rollup_inbox_repr.ml
    sc_rollup_tick_repr.mli sc_rollup_tick_repr.ml
+   sc_rollup_proof_repr.mli sc_rollup_proof_repr.ml
    sc_rollup_game_repr.mli sc_rollup_game_repr.ml
    seed_repr.mli seed_repr.ml
    sampler.mli sampler.ml
@@ -643,6 +646,7 @@ include Tezos_raw_protocol_alpha.Main
    Skip_list_repr
    Sc_rollup_inbox_repr
    Sc_rollup_tick_repr
+   Sc_rollup_proof_repr
    Sc_rollup_game_repr
    Seed_repr
    Sampler
@@ -871,6 +875,7 @@ include Tezos_raw_protocol_alpha.Main
    skip_list_repr.mli skip_list_repr.ml
    sc_rollup_inbox_repr.mli sc_rollup_inbox_repr.ml
    sc_rollup_tick_repr.mli sc_rollup_tick_repr.ml
+   sc_rollup_proof_repr.mli sc_rollup_proof_repr.ml
    sc_rollup_game_repr.mli sc_rollup_game_repr.ml
    seed_repr.mli seed_repr.ml
    sampler.mli sampler.ml

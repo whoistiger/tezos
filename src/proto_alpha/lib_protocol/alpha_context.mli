@@ -2575,31 +2575,31 @@ module Sc_rollup : sig
       MerkelizedOperations with type tree = Tree.tree
   end
 
-  module Game : sig
+  module Proof : sig
     type pvm_ops = {
       eval : string option -> Context.tree -> (Context.tree * unit) Lwt.t;
       expect_input : Context.tree -> (Context.tree * (int * int) option) Lwt.t;
     }
 
-    module Proof : sig
-      type t =
-        | Computation_step of {
-            step : Context.Proof.tree Context.Proof.t;
-            not_input : Context.Proof.tree Context.Proof.t;
-          }
-        | Input_step of {
-            step : Context.Proof.tree Context.Proof.t;
-            input : Context.Proof.tree Context.Proof.t;
-            next : Sc_rollup_inbox_repr.inclusion_proof;
-            inclusion : Sc_rollup_inbox_repr.inclusion_proof;
-          }
-        | Blocked_step of {
-            input : Context.Proof.tree Context.Proof.t;
-            no_next : Sc_rollup_inbox_repr.inclusion_proof;
-            inclusion : Sc_rollup_inbox_repr.inclusion_proof;
-          }
-    end
+    type t =
+      | Computation_step of {
+          step : Context.Proof.tree Context.Proof.t;
+          not_input : Context.Proof.tree Context.Proof.t;
+        }
+      | Input_step of {
+          step : Context.Proof.tree Context.Proof.t;
+          input : Context.Proof.tree Context.Proof.t;
+          next : Sc_rollup_inbox_repr.inclusion_proof;
+          inclusion : Sc_rollup_inbox_repr.inclusion_proof;
+        }
+      | Blocked_step of {
+          input : Context.Proof.tree Context.Proof.t;
+          no_next : Sc_rollup_inbox_repr.inclusion_proof;
+          inclusion : Sc_rollup_inbox_repr.inclusion_proof;
+        }
+  end
 
+  module Game : sig
     type player = Alice | Bob
 
     type t = {
