@@ -807,13 +807,15 @@ let get_or_init_game ctxt rollup ~refuter ~defender =
       let* (ctxt, _) = Store.Opponent.init (ctxt, rollup) defender refuter in
       return (game, ctxt)
 
-let update_game ctxt rollup ~refuter ~defender refutation =
+let update_game ctxt rollup ~player ~opponent refutation =
   let open Lwt_tzresult_syntax in
-  let (alice, bob) = Sc_rollup_game_repr.Index.normalize (refuter, defender) in
-  let* (game, ctxt) = get_or_init_game ctxt rollup ~refuter ~defender in
+  let (alice, bob) = Sc_rollup_game_repr.Index.normalize (player, opponent) in
+  let* (game, ctxt) =
+    get_or_init_game ctxt rollup ~refuter:player ~defender:opponent
+  in
   let* _ =
     let turn = match game.turn with Alice -> alice | Bob -> bob in
-    if Sc_rollup_repr.Staker.equal turn refuter then return ()
+    if Sc_rollup_repr.Staker.equal turn player then return ()
     else fail Sc_rollup_wrong_turn
   in
   match Sc_rollup_game_repr.play game refutation with

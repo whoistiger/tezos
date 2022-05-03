@@ -2682,8 +2682,8 @@ module Sc_rollup : sig
   val update_game :
     context ->
     t ->
-    refuter:Staker.t ->
-    defender:Staker.t ->
+    player:Staker.t ->
+    opponent:Staker.t ->
     Game.refutation ->
     (Game.outcome option * context) tzresult Lwt.t
 

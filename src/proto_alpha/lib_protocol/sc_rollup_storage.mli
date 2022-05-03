@@ -432,10 +432,10 @@ val get_or_init_game :
   defender:Sc_rollup_repr.Staker.t ->
   (Sc_rollup_game_repr.t * Raw_context.t) tzresult Lwt.t
 
-(** [update_game ctxt rollup refuter defender refutation] handles the
+(** [update_game ctxt rollup player opponent refutation] handles the
     storage-side logic for when one of the players makes a move in the
     game. It initializes the game if necessary (the first move looks
-    much like any other). It checks that [refuter] is the player whose
+    much like any other). It checks that [player] is the player whose
     turn it is; if so, it applies [refutation] using the [play] function.
     
     If the result is a new game, this is stored and the timeout level is
@@ -446,11 +446,11 @@ val get_or_init_game :
     May fail with:
     {ul
       {li [Sc_rollup_does_not_exist] if [rollup] does not exist}
-      {li [Sc_rollup_no_conflict] if [refuter] is staked on an ancestor of 
-         the commitment staked on by [defender], or vice versa}
-      {li [Sc_rollup_not_staked] if one of the [refuter] or [defender] is
+      {li [Sc_rollup_no_conflict] if [player] is staked on an ancestor of 
+         the commitment staked on by [opponent], or vice versa}
+      {li [Sc_rollup_not_staked] if one of the [player] or [opponent] is
          not actually staked}
-      {li [Sc_rollup_staker_in_game] if one of the [refuter] or [defender]
+      {li [Sc_rollup_staker_in_game] if one of the [player] or [opponent]
          is already playing a game}
       {li [Sc_rollup_wrong_turn] if a player is trying to move out of
          turn}
@@ -458,8 +458,8 @@ val get_or_init_game :
 val update_game :
   Raw_context.t ->
   Sc_rollup_repr.t ->
-  refuter:Sc_rollup_repr.Staker.t ->
-  defender:Sc_rollup_repr.Staker.t ->
+  player:Sc_rollup_repr.Staker.t ->
+  opponent:Sc_rollup_repr.Staker.t ->
   Sc_rollup_game_repr.refutation ->
   (Sc_rollup_game_repr.outcome option * Raw_context.t) tzresult Lwt.t
 

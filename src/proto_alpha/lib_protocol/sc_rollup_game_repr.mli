@@ -58,11 +58,13 @@
     Initializing a game
     ===================
 
-    The game begins when the refuter plays a first move.
+    In order to trigger the start of a game, one player must publish a
+    first move.
 
-    At this point the [initial] function will be called to convert the
-    defender's commitment into an initial [dissection]. The first move
-    is immediately applied to this to give the first state of the game.
+    The [initial] function is called at this point. It converts a
+    parent-chid pair of commitments (belonging to the other player) into
+    an initial [dissection]. The first move is immediately applied to
+    this to give the first state of the game.
 
     Note: it is quite possible for the game to end immediately after
     this first move, either if the commitment has a tick count of one or
@@ -96,7 +98,8 @@
     P2' - If [dissection] is dishonest, the next player has a winning
     strategy.
 
-    This allows us to see that
+    This allows us to see the following. (We use [refuter] to mean the
+    first player to move, and [defender] to mean the other player.)
 
     Honest refuter wins:
       An honest refuter will be refuting a dishonest commitment, because
