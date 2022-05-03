@@ -5,6 +5,8 @@
  (name tezos_context)
  (public_name tezos-context)
  (instrumentation (backend bisect_ppx))
+ (virtual_modules tezos_context)
+ (default_implementation tezos-context.disk)
  (libraries
   tezos-shell-services
   tezos-base
