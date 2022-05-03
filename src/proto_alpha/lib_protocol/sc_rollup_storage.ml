@@ -828,17 +828,6 @@ let update_game ctxt rollup ~refuter ~defender refutation =
       in
       return (None, ctxt)
 
-let apply_outcome ctxt rollup stakers (outcome : Sc_rollup_game_repr.outcome) =
-  let open Lwt_tzresult_syntax in
-  let (alice, bob) = Sc_rollup_game_repr.Index.normalize stakers in
-  let losing_staker = Sc_rollup_game_repr.Index.staker stakers outcome.loser in
-  let* ctxt = remove_staker ctxt rollup losing_staker in
-  let* (ctxt, _, _) = Store.Game.remove (ctxt, rollup) (alice, bob) in
-  let* (ctxt, _, _) = Store.Game_timeout.remove (ctxt, rollup) (alice, bob) in
-  let* (ctxt, _, _) = Store.Opponent.remove (ctxt, rollup) alice in
-  let* (ctxt, _, _) = Store.Opponent.remove (ctxt, rollup) bob in
-  return (Sc_rollup_game_repr.Ended (outcome.reason, losing_staker), ctxt)
-
 let timeout ctxt rollup stakers =
   let open Lwt_tzresult_syntax in
   let level = (Raw_context.current_level ctxt).level in
@@ -853,3 +842,14 @@ let timeout ctxt rollup stakers =
       if Raw_level_repr.(level > timeout_level) then
         return (Sc_rollup_game_repr.{loser = game.turn; reason = Timeout}, ctxt)
       else fail Sc_rollup_timeout_level_not_reached
+
+let apply_outcome ctxt rollup stakers (outcome : Sc_rollup_game_repr.outcome) =
+  let open Lwt_tzresult_syntax in
+  let (alice, bob) = Sc_rollup_game_repr.Index.normalize stakers in
+  let losing_staker = Sc_rollup_game_repr.Index.staker stakers outcome.loser in
+  let* ctxt = remove_staker ctxt rollup losing_staker in
+  let* (ctxt, _, _) = Store.Game.remove (ctxt, rollup) (alice, bob) in
+  let* (ctxt, _, _) = Store.Game_timeout.remove (ctxt, rollup) (alice, bob) in
+  let* (ctxt, _, _) = Store.Opponent.remove (ctxt, rollup) alice in
+  let* (ctxt, _, _) = Store.Opponent.remove (ctxt, rollup) bob in
+  return (Sc_rollup_game_repr.Ended (outcome.reason, losing_staker), ctxt)

@@ -2687,18 +2687,18 @@ module Sc_rollup : sig
     Game.refutation ->
     (Game.outcome option * context) tzresult Lwt.t
 
+  val timeout :
+    context ->
+    t ->
+    Staker.t * Staker.t ->
+    (Game.outcome * context) tzresult Lwt.t
+
   val apply_outcome :
     context ->
     t ->
     Staker.t * Staker.t ->
     Game.outcome ->
     (Game.status * context) tzresult Lwt.t
-
-  val timeout :
-    context ->
-    t ->
-    Staker.t * Staker.t ->
-    (Game.outcome * context) tzresult Lwt.t
 
   module Internal_for_tests : sig
     val originated_sc_rollup : Origination_nonce.Internal_for_tests.t -> t

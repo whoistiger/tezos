@@ -463,6 +463,27 @@ val update_game :
   Sc_rollup_game_repr.refutation ->
   (Sc_rollup_game_repr.outcome option * Raw_context.t) tzresult Lwt.t
 
+(** [timeout ctxt rollup stakers] checks that the timeout has
+    elapsed and if this function returns a game outcome that punishes whichever
+    of [stakers] is supposed to have played a move.
+
+    May fail with:
+    {ul
+      {li [Sc_rollup_no_game] if the game does not in fact exist}
+      {li [Sc_rollup_timeout_level_not_reached] if the player still has
+         time in which to play}
+    }
+
+    Note: this function takes the two stakers as a pair rather than
+    separate arguments. This reflects the fact that for this function
+    the two players are symmetric. This function will normalize the
+    order of the players if necessary to create a valid game index. *)
+val timeout :
+  Raw_context.t ->
+  Sc_rollup_repr.t ->
+  Sc_rollup_repr.Staker.t * Sc_rollup_repr.Staker.t ->
+  (Sc_rollup_game_repr.outcome * Raw_context.t) tzresult Lwt.t
+
 (** [apply_outcome ctxt rollup outcome] takes an [outcome] produced
     by [timeout] or [update_game] and performs the necessary end-of-game
     cleanup: remove the game itself from the store and punish the losing
@@ -486,24 +507,3 @@ val apply_outcome :
   Sc_rollup_repr.Staker.t * Sc_rollup_repr.Staker.t ->
   Sc_rollup_game_repr.outcome ->
   (Sc_rollup_game_repr.status * Raw_context.t) tzresult Lwt.t
-
-(** [timeout ctxt rollup stakers] checks that the timeout has
-    elapsed and if this function returns a game outcome that punishes whichever
-    of [stakers] is supposed to have played a move.
-    
-    May fail with:
-    {ul
-      {li [Sc_rollup_no_game] if the game does not in fact exist}
-      {li [Sc_rollup_timeout_level_not_reached] if the player still has
-         time in which to play}
-    }
-
-    Note: this function takes the two stakers as a pair rather than
-    separate arguments. This reflects the fact that for this function
-    the two players are symmetric. This function will normalize the
-    order of the players if necessary to create a valid game index. *)
-val timeout :
-  Raw_context.t ->
-  Sc_rollup_repr.t ->
-  Sc_rollup_repr.Staker.t * Sc_rollup_repr.Staker.t ->
-  (Sc_rollup_game_repr.outcome * Raw_context.t) tzresult Lwt.t
