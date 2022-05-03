@@ -242,58 +242,69 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
 
   (* TODO: https://gitlab.com/tezos/tezos/-/issues/2869
      use the Injector to publish commitments. *)
-  let publish_commitment (node_ctxt : Node_context.t) store =
-    let origination_level = node_ctxt.initial_level in
+  let publish_commitment
+      ({cctxt; rollup_address; initial_level; _} as node_ctxt : Node_context.t)
+      store =
     let open Lwt_result_syntax in
     let* next_level_to_publish =
       Lwt.map Environment.wrap_tzresult
       @@ next_commitment_level
            (module Store.Last_published_commitment_level)
-           ~origination_level
+           ~origination_level:initial_level
            store
     in
     let*! is_commitment_available =
       Store.Commitments.mem store next_level_to_publish
     in
     if is_commitment_available then
-      let*! commitment = Store.Commitments.get store next_level_to_publish in
-      let cctxt = node_ctxt.cctxt in
-      let sc_rollup_address = node_ctxt.rollup_address in
-      let* (source, src_pk, src_sk) =
-        Node_context.get_operator_keys node_ctxt
-      in
-      let* (_, _, Manager_operation_result {operation_result; _}) =
-        Client_proto_context.sc_rollup_publish
+      (* Retrieve the inbox level of the last_cemented_commitment and check if
+         it is greater or equal than the inbox level of the commitment to be
+         published. *)
+      let* (_, last_non_publishable_level) =
+        Plugin.RPC.Sc_rollup.last_cemented_commitment_hash_with_level
           cctxt
-          ~chain:cctxt#chain
-          ~block:cctxt#block
-          ~commitment
-          ~source
-          ~rollup:sc_rollup_address
-          ~src_pk
-          ~src_sk
-          ~fee_parameter:Configuration.default_fee_parameter
-          ()
+          (cctxt#chain, cctxt#block)
+          rollup_address
       in
-      let open Apply_results in
-      let*! () =
-        match operation_result with
-        | Applied (Sc_rollup_publish_result _) ->
-            let open Lwt_syntax in
-            let* () =
-              Store.Last_published_commitment_level.set
-                store
-                commitment.inbox_level
-            in
-            Commitment_event.commitment_published commitment
-        | Failed (Sc_rollup_publish_manager_kind, _errors) ->
-            Commitment_event.commitment_failed commitment
-        | Backtracked (Sc_rollup_publish_result _, _errors) ->
-            Commitment_event.commitment_backtracked commitment
-        | Skipped Sc_rollup_publish_manager_kind ->
-            Commitment_event.commitment_skipped commitment
-      in
-      return_unit
+      let*! commitment = Store.Commitments.get store next_level_to_publish in
+      if Raw_level.(commitment.inbox_level <= last_non_publishable_level) then
+        return_unit
+      else
+        let* (source, src_pk, src_sk) =
+          Node_context.get_operator_keys node_ctxt
+        in
+        let* (_, _, Manager_operation_result {operation_result; _}) =
+          Client_proto_context.sc_rollup_publish
+            cctxt
+            ~chain:cctxt#chain
+            ~block:cctxt#block
+            ~commitment
+            ~source
+            ~rollup:rollup_address
+            ~src_pk
+            ~src_sk
+            ~fee_parameter:Configuration.default_fee_parameter
+            ()
+        in
+        let open Apply_results in
+        let*! () =
+          match operation_result with
+          | Applied (Sc_rollup_publish_result _) ->
+              let open Lwt_syntax in
+              let* () =
+                Store.Last_published_commitment_level.set
+                  store
+                  commitment.inbox_level
+              in
+              Commitment_event.commitment_published commitment
+          | Failed (Sc_rollup_publish_manager_kind, _errors) ->
+              Commitment_event.commitment_failed commitment
+          | Backtracked (Sc_rollup_publish_result _, _errors) ->
+              Commitment_event.commitment_backtracked commitment
+          | Skipped Sc_rollup_publish_manager_kind ->
+              Commitment_event.commitment_skipped commitment
+        in
+        return_unit
     else return_unit
 
   let start () = Commitment_event.starting ()

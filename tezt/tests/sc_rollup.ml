@@ -907,6 +907,10 @@ let test_rollup_node_advances_pvm_state =
    trying to publish a commitment.
 *)
 
+(* TODO: https://gitlab.com/tezos/tezos/-/issues/2111 
+   Check that commitments below last cemented commitment level 
+   are not published. *)
+
 let rec bake_levels n client =
   if n <= 0 then return ()
   else
