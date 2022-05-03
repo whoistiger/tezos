@@ -233,7 +233,7 @@ let initial_state ~pre_allocated_storage =
 
 let encoding : t Data_encoding.t =
   let open Data_encoding in
-  conv
+  conv_with_guard
     (fun {
            last_removed_commitment_hashes;
            finalized_commitments;
@@ -269,19 +269,28 @@ let encoding : t Data_encoding.t =
              occupied_storage,
              inbox_ema ),
            commitments_watermark ) ->
-      {
-        last_removed_commitment_hashes;
-        finalized_commitments;
-        unfinalized_commitments;
-        uncommitted_inboxes;
-        commitment_newest_hash;
-        tezos_head_level;
-        burn_per_byte;
-        allocated_storage;
-        occupied_storage;
-        inbox_ema;
-        commitments_watermark;
-      })
+      if Tez_repr.(zero <= burn_per_byte) then
+        Ok
+          {
+            last_removed_commitment_hashes;
+            finalized_commitments;
+            unfinalized_commitments;
+            uncommitted_inboxes;
+            commitment_newest_hash;
+            tezos_head_level;
+            burn_per_byte;
+            allocated_storage;
+            occupied_storage;
+            inbox_ema;
+            commitments_watermark;
+          }
+      else
+        Error
+          (Format.sprintf
+             "Error while decoding type %s from json:\n\
+              Field \"%s\" must be >= 0"
+             "proto_alpha.lib_protocol.tx_rollup_state_repr.t"
+             "burn_per_byte"))
     (merge_objs
        (obj10
           (req
