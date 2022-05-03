@@ -44,6 +44,7 @@ type error +=
   | (* `Temporary *) Sc_rollup_max_number_of_available_messages_reached
   | (* `Temporary *) Sc_rollup_wrong_turn
   | (* `Temporary *) Sc_rollup_no_game
+  | (* `Temporary *) Sc_rollup_staker_in_game
   | (* `Temporary *) Sc_rollup_timeout_level_not_reached
 
 let () =
@@ -57,6 +58,14 @@ let () =
       | Sc_rollup_max_number_of_available_messages_reached -> Some ()
       | _ -> None)
     (fun () -> Sc_rollup_max_number_of_available_messages_reached) ;
+  register_error_kind
+    `Temporary
+    ~id:"Sc_rollup_staker_in_game"
+    ~title:"Staker is already playing a game"
+    ~description:"Attempt to start a game where one staker is already busy"
+    Data_encoding.unit
+    (function Sc_rollup_staker_in_game -> Some () | _ -> None)
+    (fun () -> Sc_rollup_staker_in_game) ;
   register_error_kind
     `Temporary
     ~id:"Sc_rollup_timeout_level_not_reached"
@@ -772,6 +781,13 @@ let get_or_init_game ctxt rollup ~refuter ~defender =
   match game with
   | Some g -> return (g, ctxt)
   | None ->
+      let* (ctxt, opp_1) = Store.Opponent.find (ctxt, rollup) refuter in
+      let* (ctxt, opp_2) = Store.Opponent.find (ctxt, rollup) defender in
+      let* _ =
+        match (opp_1, opp_2) with
+        | (None, None) -> return ()
+        | _ -> fail Sc_rollup_staker_in_game
+      in
       let* ((_, child), ctxt) =
         get_conflict_point ctxt rollup refuter defender
       in
@@ -787,6 +803,8 @@ let get_or_init_game ctxt rollup ~refuter ~defender =
       let* (ctxt, _) =
         Store.Game_timeout.init (ctxt, rollup) stakers (timeout_level ctxt)
       in
+      let* (ctxt, _) = Store.Opponent.init (ctxt, rollup) refuter defender in
+      let* (ctxt, _) = Store.Opponent.init (ctxt, rollup) defender refuter in
       return (game, ctxt)
 
 let update_game ctxt rollup ~refuter ~defender refutation =
@@ -817,6 +835,8 @@ let apply_outcome ctxt rollup stakers (outcome : Sc_rollup_game_repr.outcome) =
   let* ctxt = remove_staker ctxt rollup losing_staker in
   let* (ctxt, _, _) = Store.Game.remove (ctxt, rollup) (alice, bob) in
   let* (ctxt, _, _) = Store.Game_timeout.remove (ctxt, rollup) (alice, bob) in
+  let* (ctxt, _, _) = Store.Opponent.remove (ctxt, rollup) alice in
+  let* (ctxt, _, _) = Store.Opponent.remove (ctxt, rollup) bob in
   return (Sc_rollup_game_repr.Ended (outcome.reason, losing_staker), ctxt)
 
 let timeout ctxt rollup stakers =

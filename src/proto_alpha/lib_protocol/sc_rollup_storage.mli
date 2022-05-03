@@ -139,6 +139,8 @@ type error +=
   | (* `Temporary *)
       Sc_rollup_remove_lcc
   | (* `Temporary *)
+      Sc_rollup_staker_in_game
+  | (* `Temporary *)
       Sc_rollup_bad_inbox_level
 
 (** [originate context ~kind ~boot_sector] produces an address [a] for
@@ -420,6 +422,8 @@ val initial_level :
          the commitment staked on by [defender], or vice versa}
       {li [Sc_rollup_not_staked] if one of the [refuter] or [defender] is
          not actually staked}
+      {li [Sc_rollup_staker_in_game] if one of the [refuter] or [defender]
+         is already playing a game}
     } *)
 val get_or_init_game :
   Raw_context.t ->
@@ -446,6 +450,8 @@ val get_or_init_game :
          the commitment staked on by [defender], or vice versa}
       {li [Sc_rollup_not_staked] if one of the [refuter] or [defender] is
          not actually staked}
+      {li [Sc_rollup_staker_in_game] if one of the [refuter] or [defender]
+         is already playing a game}
       {li [Sc_rollup_wrong_turn] if a player is trying to move out of
          turn}
     } *)
