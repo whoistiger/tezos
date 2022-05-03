@@ -768,11 +768,11 @@ let initial_level ctxt rollup =
   | Some level -> return level
 
 (** TODO #2902: replace with protocol constant and consider good value. *)
-let timeout_period = 500
+let timeout_period_in_blocks = 500
 
 let timeout_level ctxt =
   let level = Raw_context.current_level ctxt in
-  Raw_level_repr.add level.level timeout_period
+  Raw_level_repr.add level.level timeout_period_in_blocks
 
 let get_or_init_game ctxt rollup ~refuter ~defender =
   let open Lwt_tzresult_syntax in
