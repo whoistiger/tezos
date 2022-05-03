@@ -306,6 +306,8 @@ let ledgerwallet_tezos = vendored_lib "ledgerwallet-tezos"
 
 let pyml_plot = vendored_lib "pyml-plot"
 
+let wasm_interpreter_lib = vendored_lib "wasm-interpreter-lib"
+
 (* INTERNAL LIBS *)
 
 let tezos_test_helpers =
@@ -2551,6 +2553,14 @@ let tezos_openapi =
       "Tezos: a library for querying RPCs and converting into the OpenAPI \
        format"
     ~deps:[ezjsonm; json_data_encoding; tezt]
+
+let _tezos_scoru_wasm =
+  public_lib
+    "tezos-scoru-wasm"
+    ~path:"src/lib_scoru_wasm"
+    ~synopsis:
+      "Protocol environment dependency providing WASM functionality for SCORU"
+    ~deps:[wasm_interpreter_lib]
 
 (* PROTOCOL PACKAGES *)
 
