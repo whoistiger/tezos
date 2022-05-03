@@ -484,7 +484,8 @@ val update_game :
     Note: this function takes the two stakers as a pair rather than
     separate arguments. This reflects the fact that for this function
     the two players are symmetric. This function will normalize the
-    order of the players if necessary to create a valid game index. *)
+    order of the players if necessary to get a valid game index, so the
+    argument [stakers] doesn't have to be in normal form. *)
 val timeout :
   Raw_context.t ->
   Sc_rollup_repr.t ->
@@ -507,7 +508,8 @@ val timeout :
     Note: this function takes the two stakers as a pair rather than
     separate arguments. This reflects the fact that for this function
     the two players are symmetric. This function will normalize the
-    order of the players if necessary to create a valid game index. *)
+    order of the players if necessary to get a valid game index, so the
+    argument [stakers] doesn't have to be in normal form. *)
 val apply_outcome :
   Raw_context.t ->
   Sc_rollup_repr.t ->
