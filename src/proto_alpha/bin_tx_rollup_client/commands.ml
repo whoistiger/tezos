@@ -211,9 +211,6 @@ let craft_batch
   in
   batch signatures transactions
 
-let conv_pk =
-  parameter (fun _ pk_str -> return (Bls.Public_key.of_b58check_exn pk_str))
-
 let conv_qty =
   parameter (fun _ qty ->
       match Tx_rollup_l2_qty.of_string qty with
@@ -222,27 +219,21 @@ let conv_qty =
 
 let conv_counter = parameter (fun _ counter -> return (Int64.of_string counter))
 
-let signer_next_counter cctxt signer_pk counter =
+let signer_to_address : Tx_rollup_l2_batch.signer -> Tx_rollup_l2_address.t =
+  function
+  | Bls_pk pk -> Tx_rollup_l2_address.of_bls_pk pk
+  | L2_addr addr -> addr
+
+let signer_next_counter cctxt signer counter =
+  let open Lwt_result_syntax in
   match counter with
-  | Some c -> return c
+  | Some counter -> return counter
   | None ->
-      (* Retrieve the counter of the current head and increments it
-         by one. *)
-      (match RPC.destruct_block_id "head" with
-      | Ok v -> return v
-      | Error e ->
-          let pkh_str =
-            Bls12_381.Signature.MinPk.pk_to_bytes signer_pk
-            |> Data_encoding.Binary.of_bytes_exn
-                 Tezos_crypto.Bls.Public_key.encoding
-            |> Tezos_crypto.Bls.Public_key.to_b58check
-          in
-          failwith "Cannot get counter of %s (%s)" pkh_str e)
-      >>=? fun head ->
-      let pkh = Tx_rollup_l2_address.of_bls_pk signer_pk in
-      RPC.counter cctxt head pkh >>=? fun counter -> return (Int64.succ counter)
+      let+ counter = RPC.counter cctxt `Head (signer_to_address signer) in
+      Int64.succ counter
 
 let craft_tx_transfers () =
+  let open Lwt_result_syntax in
   command
     ~desc:"WIP: craft a transaction with transfers"
     (args1
@@ -252,7 +243,10 @@ let craft_tx_transfers () =
           ~doc:"counter value of the destination"
           conv_counter))
     (prefixes ["craft"; "tx"; "transfers"; "from"]
-    @@ param ~name:"signer_pk" ~desc:"public key of the signer" conv_pk
+    @@ param
+         ~name:"source"
+         ~desc:"A BLS public key or a BLS public key hash"
+         signer_parameter
     @@ prefix "using"
     @@ param
          ~name:"transfers.json"
@@ -264,7 +258,7 @@ let craft_tx_transfers () =
          json_file_or_text_parameter
     @@ stop)
     (fun counter
-         signer_pk
+         signer
          transfers_json
          (cctxt : #Configuration.tx_client_context) ->
       let transfers_encoding =
@@ -288,8 +282,7 @@ let craft_tx_transfers () =
                   Alpha_context.Ticket_hash.of_b58check_exn ticket ))
               transfers
           in
-          signer_next_counter cctxt signer_pk counter >>=? fun counter ->
-          let signer = Tx_rollup_l2_batch.Bls_pk signer_pk in
+          let* counter = signer_next_counter cctxt signer counter in
           let op = craft_transfers ~counter ~signer transfers in
           let json =
             Data_encoding.Json.construct
@@ -312,7 +305,10 @@ let craft_tx_transaction () =
     (prefixes ["craft"; "tx"; "transferring"]
     @@ param ~name:"qty" ~desc:"qty to transfer" conv_qty
     @@ prefixes ["from"]
-    @@ param ~name:"signer_pk" ~desc:"public key of the signer" conv_pk
+    @@ param
+         ~name:"source"
+         ~desc:"A BLS public key or a BLS public key hash"
+         signer_parameter
     @@ prefixes ["to"]
     @@ param
          ~name:"dest"
@@ -323,12 +319,11 @@ let craft_tx_transaction () =
     @@ stop)
     (fun counter
          qty
-         signer_pk
+         signer
          destination
          ticket_hash
          (cctxt : #Configuration.tx_client_context) ->
-      signer_next_counter cctxt signer_pk counter >>=? fun counter ->
-      let signer = Tx_rollup_l2_batch.Bls_pk signer_pk in
+      let* counter = signer_next_counter cctxt signer counter in
       let op = craft_tx ~counter ~signer ~destination ~ticket_hash ~qty in
       let json =
         Data_encoding.Json.construct
@@ -351,7 +346,10 @@ let craft_tx_withdrawal () =
     (prefixes ["craft"; "tx"; "withdrawing"]
     @@ param ~name:"qty" ~desc:"qty to withdraw" conv_qty
     @@ prefixes ["from"]
-    @@ param ~name:"signer_pk" ~desc:"public key of the signer" conv_pk
+    @@ param
+         ~name:"source"
+         ~desc:"A BLS public key or a BLS public key hash"
+         signer_parameter
     @@ prefixes ["to"]
     @@ param
          ~name:"dest"
@@ -362,24 +360,11 @@ let craft_tx_withdrawal () =
     @@ stop)
     (fun counter
          qty
-         signer_pk
+         signer
          destination
          ticket_hash
          (cctxt : #Configuration.tx_client_context) ->
-      (match counter with
-      | Some c -> return c
-      | None ->
-          (* Retrieve the counter of the current head and increments it
-             by one. *)
-          (match RPC.destruct_block_id "head" with
-          | Ok v -> return v
-          | Error e -> failwith "Cannot get counter of current head (%s)" e)
-          >>=? fun head ->
-          let pkh = Tx_rollup_l2_address.of_bls_pk signer_pk in
-          RPC.counter cctxt head pkh >>=? fun counter ->
-          return (Int64.succ counter))
-      >>=? fun counter ->
-      let signer = Tx_rollup_l2_batch.Bls_pk signer_pk in
+      let* counter = signer_next_counter cctxt signer counter in
       let op = craft_withdraw ~counter ~signer ~destination ~ticket_hash ~qty in
       let json =
         Data_encoding.Json.construct
@@ -528,24 +513,13 @@ let transfer () =
          l2_destination_parameter
     @@ stop)
     (fun (sk, counter) qty ticket_hash signer destination cctxt ->
-      let signer_to_address :
-          Tx_rollup_l2_batch.signer -> Tx_rollup_l2_address.t = function
-        | Bls_pk pk -> Tx_rollup_l2_address.of_bls_pk pk
-        | L2_addr addr -> addr
-      in
       let open Tx_rollup_l2_batch.V1 in
       let* sk =
         match sk with
         | Some sk -> return sk
         | None -> failwith "Missing secret key argument"
       in
-      let* counter =
-        match counter with
-        | Some counter -> return counter
-        | None ->
-            let+ counter = RPC.counter cctxt `Head (signer_to_address signer) in
-            Int64.succ counter
-      in
+      let* counter = signer_next_counter cctxt signer counter in
       (* TODO/TORU: https://gitlab.com/tezos/tezos/-/issues/2903
          Use an RPC to know whether or not it can be safely replaced by
          an index. *)
