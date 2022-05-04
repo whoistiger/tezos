@@ -119,3 +119,11 @@ type error +=
       reconstructed_inbox : Protocol.Alpha_context.Tx_rollup_inbox.t;
       protocol_inbox : Protocol.Alpha_context.Tx_rollup_inbox.t;
     }
+
+(** Mismatch between the chosen mode and the provided signers. *)
+type error +=
+  | Tx_rollup_mismatch_mode_signers of {
+      mode : string;
+      missing_signers : string list;
+      extra_signers : string list;
+    }
