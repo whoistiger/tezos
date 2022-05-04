@@ -160,6 +160,29 @@ let craft_tx_batch tx_client ~batch ~signatures =
   in
   Lwt.return out
 
+let transfer ?counter tx_client ~source ~secret_key
+    Rollup.Tx_rollup.{qty; destination; ticket} =
+  let qty = Int64.to_string qty in
+  let* out =
+    spawn_command
+      tx_client
+      ([
+         "transfer";
+         qty;
+         "of";
+         ticket;
+         "from";
+         source;
+         "to";
+         destination;
+         "--secret-key";
+         secret_key;
+       ]
+      @ optional_arg ~name:"counter" Int64.to_string counter)
+    |> Process.check_and_read_stdout
+  in
+  Lwt.return out
+
 let get_batcher_queue tx_client =
   let* out =
     spawn_command tx_client ["get"; "batcher"; "queue"]
