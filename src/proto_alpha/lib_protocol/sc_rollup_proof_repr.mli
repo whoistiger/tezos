@@ -30,8 +30,12 @@ open Sc_rollup_repr
 
 (** XXX: ... *)
 type pvm_ops = {
-  eval : string option -> Context.tree -> (Context.tree * unit) Lwt.t;
-  expect_input : Context.tree -> (Context.tree * (int * int) option) Lwt.t;
+  eval :
+    (Raw_level_repr.t * Z.t * string) option ->
+    Context.tree ->
+    (Context.tree * unit) Lwt.t;
+  expect_input :
+    Context.tree -> (Context.tree * (Raw_level_repr.t * Z.t) option) Lwt.t;
 }
 
 (** There are three cases for a refutation game proof:
@@ -58,13 +62,11 @@ type t =
   | Input_step of {
       step : Context.Proof.tree Context.Proof.t;
       input : Context.Proof.tree Context.Proof.t;
-      next : Sc_rollup_inbox_repr.inclusion_proof;
-      inclusion : Sc_rollup_inbox_repr.inclusion_proof;
+      inbox : Sc_rollup_inbox_repr.Proof.t;
     }
   | Blocked_step of {
       input : Context.Proof.tree Context.Proof.t;
-      no_next : Sc_rollup_inbox_repr.inclusion_proof;
-      inclusion : Sc_rollup_inbox_repr.inclusion_proof;
+      inbox : Sc_rollup_inbox_repr.Proof.t;
     }
 
 val encoding : t Data_encoding.t

@@ -569,3 +569,106 @@ include (
     type key = string list
   end) :
     MerkelizedOperations with type tree = Context.tree)
+
+type inbox = t
+
+(** XXX *)
+module Proof = struct
+  type t =
+    | Within_level of {
+        level : inbox;
+        inc : inclusion_proof;
+        message_proof : Context.Proof.tree Context.Proof.t;
+      }
+    | Next_level of {
+        level : inbox;
+        next_inc : inclusion_proof;
+        next_level : inbox;
+        inc : inclusion_proof;
+        message_proof : Context.Proof.tree Context.Proof.t;
+      }
+
+  let encoding =
+    Data_encoding.(
+      union
+        ~tag_size:`Uint8
+        [
+          case
+            ~title:"Proof of a message in the middle of a level"
+            (Tag 0)
+            (tup3
+               encoding
+               inclusion_proof_encoding
+               Context.Proof_encoding.V2.Tree32.tree_proof_encoding)
+            (function
+              | Within_level {level; inc; message_proof} ->
+                  Some (level, inc, message_proof)
+              | _ -> None)
+            (fun (level, inc, message_proof) ->
+              Within_level {level; inc; message_proof});
+          case
+            ~title:"Proof of a message starting a new level"
+            (Tag 1)
+            (tup5
+               encoding
+               inclusion_proof_encoding
+               encoding
+               inclusion_proof_encoding
+               Context.Proof_encoding.V2.Tree32.tree_proof_encoding)
+            (function
+              | Next_level {level; next_inc; next_level; inc; message_proof} ->
+                  Some (level, next_inc, next_level, inc, message_proof)
+              | _ -> None)
+            (fun (level, next_inc, next_level, inc, message_proof) ->
+              Next_level {level; next_inc; next_level; inc; message_proof});
+        ])
+
+  let message_payload n tree =
+    let open Lwt_syntax in
+    let* r = get_message_payload tree n in
+    return (tree, r)
+
+  let check_hash hash kinded_hash =
+    match kinded_hash with
+    | `Node h -> Context_hash.equal h hash
+    | `Value h -> Context_hash.equal h hash
+
+  let drop_error result = Lwt.map (Result.map_error (fun _ -> ())) result
+
+  let valid (l, n) inbox proof =
+    let open Lwt_result_syntax in
+    match proof with
+    | Within_level {level; inc; message_proof} ->
+        if
+          verify_inclusion_proof inc level inbox
+          && Raw_level_repr.equal (inbox_level level) l
+          && check_hash (level.current_messages_hash ()) message_proof.before
+        then
+          let succ_n = Z.succ n in
+          let* (_, payload) =
+            drop_error
+            @@ Context.verify_tree_proof message_proof (message_payload succ_n)
+          in
+          match payload with
+          | None -> fail ()
+          | Some _ -> return (l, succ_n, payload)
+        else fail ()
+    | Next_level {level; next_inc; next_level; inc; message_proof} ->
+        let succ_l = Raw_level_repr.succ l in
+        if
+          verify_inclusion_proof inc level next_level
+          && verify_inclusion_proof next_inc next_level inbox
+          && Raw_level_repr.equal (inbox_level level) l
+          && Raw_level_repr.equal (inbox_level next_level) succ_l
+          && Z.equal level.message_counter n
+          && check_hash
+               (next_level.current_messages_hash ())
+               message_proof.before
+        then
+          let* (_, payload) =
+            drop_error
+            @@ Context.verify_tree_proof message_proof (message_payload Z.zero)
+          in
+          return (succ_l, Z.zero, payload)
+        else fail ()
+end

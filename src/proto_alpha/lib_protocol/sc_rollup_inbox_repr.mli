@@ -292,3 +292,32 @@ module MakeHashingScheme (Tree : TREE) :
   MerkelizedOperations with type tree = Tree.tree
 
 include MerkelizedOperations with type tree = Context.tree
+
+type inbox = t
+
+(** XXX *)
+module Proof : sig
+  (** XXX *)
+  type t =
+    | Within_level of {
+        level : inbox;
+        inc : inclusion_proof;
+        message_proof : Context.Proof.tree Context.Proof.t;
+      }
+    | Next_level of {
+        level : inbox;
+        next_inc : inclusion_proof;
+        next_level : inbox;
+        inc : inclusion_proof;
+        message_proof : Context.Proof.tree Context.Proof.t;
+      }
+
+  val encoding : t Data_encoding.t
+
+  (** XXX *)
+  val valid :
+    Raw_level_repr.t * Z.t ->
+    inbox ->
+    t ->
+    (Raw_level_repr.t * Z.t * string option, unit) result Lwt.t
+end

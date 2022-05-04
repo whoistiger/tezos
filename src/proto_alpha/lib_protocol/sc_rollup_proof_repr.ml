@@ -27,8 +27,12 @@
 open Sc_rollup_repr
 
 type pvm_ops = {
-  eval : string option -> Context.tree -> (Context.tree * unit) Lwt.t;
-  expect_input : Context.tree -> (Context.tree * (int * int) option) Lwt.t;
+  eval :
+    (Raw_level_repr.t * Z.t * string) option ->
+    Context.tree ->
+    (Context.tree * unit) Lwt.t;
+  expect_input :
+    Context.tree -> (Context.tree * (Raw_level_repr.t * Z.t) option) Lwt.t;
 }
 
 type t =
@@ -39,13 +43,11 @@ type t =
   | Input_step of {
       step : Context.Proof.tree Context.Proof.t;
       input : Context.Proof.tree Context.Proof.t;
-      next : Sc_rollup_inbox_repr.inclusion_proof;
-      inclusion : Sc_rollup_inbox_repr.inclusion_proof;
+      inbox : Sc_rollup_inbox_repr.Proof.t;
     }
   | Blocked_step of {
       input : Context.Proof.tree Context.Proof.t;
-      no_next : Sc_rollup_inbox_repr.inclusion_proof;
-      inclusion : Sc_rollup_inbox_repr.inclusion_proof;
+      inbox : Sc_rollup_inbox_repr.Proof.t;
     }
 
 let encoding =
@@ -66,33 +68,26 @@ let encoding =
         case
           ~title:"Proof of an input step"
           (Tag 1)
-          (tup4
+          (tup3
              Context.Proof_encoding.V2.Tree32.tree_proof_encoding
              Context.Proof_encoding.V2.Tree32.tree_proof_encoding
-             Sc_rollup_inbox_repr.inclusion_proof_encoding
-             Sc_rollup_inbox_repr.inclusion_proof_encoding)
+             Sc_rollup_inbox_repr.Proof.encoding)
           (function
-            | Input_step {step; input; next; inclusion} ->
-                Some (step, input, next, inclusion)
+            | Input_step {step; input; inbox} -> Some (step, input, inbox)
             | _ -> None)
-          (fun (step, input, next, inclusion) ->
-            Input_step {step; input; next; inclusion});
+          (fun (step, input, inbox) -> Input_step {step; input; inbox});
         case
           ~title:"Proof that the PVM is blocked"
           (Tag 2)
-          (tup3
+          (tup2
              Context.Proof_encoding.V2.Tree32.tree_proof_encoding
-             Sc_rollup_inbox_repr.inclusion_proof_encoding
-             Sc_rollup_inbox_repr.inclusion_proof_encoding)
+             Sc_rollup_inbox_repr.Proof.encoding)
           (function
-            | Blocked_step {input; no_next; inclusion} ->
-                Some (input, no_next, inclusion)
-            | _ -> None)
-          (fun (input, no_next, inclusion) ->
-            Blocked_step {input; no_next; inclusion});
+            | Blocked_step {input; inbox} -> Some (input, inbox) | _ -> None)
+          (fun (input, inbox) -> Blocked_step {input; inbox});
       ])
 
-(* TODO: #2759 *)
+(* XXX *)
 let pp _ _ = ()
 
 let start p =
@@ -113,30 +108,35 @@ let kinded_hash_equal a b =
   | (`Value x, `Value y) -> Context_hash.equal x y
   | _ -> false
 
-let valid pvm_ops _inbox p =
-  let result =
-    let open Lwt_result_syntax in
-    match p with
-    | Computation_step x ->
-        let hashes_match = kinded_hash_equal x.step.before x.not_input.before in
-        let* _ = Context.verify_tree_proof x.step (pvm_ops.eval None) in
-        let* (_, not_input_result) =
-          Context.verify_tree_proof x.not_input pvm_ops.expect_input
-        in
-        return (hashes_match && Option.is_none not_input_result)
-    | Input_step x ->
-        let hashes_match = kinded_hash_equal x.step.before x.input.before in
-        let* _ = Context.verify_tree_proof x.step (pvm_ops.eval (Some "")) in
-        let* (_, input_location) =
-          Context.verify_tree_proof x.input pvm_ops.expect_input
-        in
-        let* _ =
-          match input_location with
-          | None -> return ()
-          | Some (_level, _counter) -> return ()
-        in
-        return hashes_match
-    | Blocked_step _ -> return false
-  in
-  (* XXX: should we translate the error somehow? *)
-  Lwt.map (Result.map_error (fun _ -> ())) result
+let drop_error result = Lwt.map (Result.map_error (fun _ -> ())) result
+
+let from_option x = Lwt_syntax.return @@ Result.of_option ~error:() x
+
+let valid pvm_ops snapshot p =
+  let open Lwt_result_syntax in
+  match p with
+  | Computation_step {step; not_input} ->
+      let hashes_match = kinded_hash_equal step.before not_input.before in
+      let* _ =
+        drop_error @@ Context.verify_tree_proof step (pvm_ops.eval None)
+      in
+      let* (_, not_input_result) =
+        drop_error @@ Context.verify_tree_proof not_input pvm_ops.expect_input
+      in
+      return (hashes_match && Option.is_none not_input_result)
+  | Input_step {step; input; inbox} ->
+      let hashes_match = kinded_hash_equal step.before input.before in
+      let* (_, inbox_location) =
+        drop_error @@ Context.verify_tree_proof input pvm_ops.expect_input
+      in
+      let* loc = from_option inbox_location in
+      let* (l, n, payload_opt) =
+        Sc_rollup_inbox_repr.Proof.valid loc snapshot inbox
+      in
+      let* payload = from_option payload_opt in
+      let* _ =
+        drop_error
+        @@ Context.verify_tree_proof step (pvm_ops.eval (Some (l, n, payload)))
+      in
+      return hashes_match
+  | Blocked_step _ -> return false (* XXX *)
