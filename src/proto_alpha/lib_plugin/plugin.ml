@@ -3183,6 +3183,15 @@ module RPC = struct
           ~output:Raw_level.encoding
           RPC_path.(path /: Sc_rollup.Address.rpc_arg / "initial_level")
 
+      let commitment =
+        RPC_service.get_service
+          ~description:"Commitment for a smart contract rollup from its hash"
+          ~query:RPC_query.empty
+          ~output:Sc_rollup.Commitment.encoding
+          RPC_path.(
+            path /: Sc_rollup.Address.rpc_arg / "commitment"
+            /: Sc_rollup.Commitment_hash.rpc_arg)
+
       let root =
         RPC_service.get_service
           ~description:"List of all originated smart contract rollups"
@@ -3217,6 +3226,15 @@ module RPC = struct
       @@ fun ctxt address () () ->
       Alpha_context.Sc_rollup.get_boot_sector ctxt address
 
+    let register_commitment () =
+      Registration.register2 ~chunked:true S.commitment
+      @@ fun ctxt address commitment_hash () () ->
+      let open Lwt_result_syntax in
+      let+ (commitment, _) =
+        Alpha_context.Sc_rollup.get_commitment ctxt address commitment_hash
+      in
+      commitment
+
     let register_root () =
       Registration.register0 ~chunked:true S.root (fun context () () ->
           Sc_rollup.list context)
@@ -3226,6 +3244,7 @@ module RPC = struct
       register_inbox () ;
       register_initial_level () ;
       register_boot_sector () ;
+      register_commitment () ;
       register_root ()
 
     let list ctxt block = RPC_context.make_call0 S.root ctxt block () ()
