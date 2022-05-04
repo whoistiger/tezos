@@ -491,7 +491,6 @@ let test_ownership_sender () =
   Incremental.begin_construction b >>=? fun b ->
   (* get the manager of the contract_1 as a sender *)
   Context.Contract.manager (I b) contract_1 >>=? fun manager ->
-  (* create an Implicit *)
   let imcontract_1 = Alpha_context.Contract.Implicit manager.pkh in
   transfer_and_check_balances ~loc:__LOC__ b imcontract_1 contract_2 Tez.one
   >>=? fun (b, _) ->
