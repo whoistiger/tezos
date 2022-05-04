@@ -499,6 +499,48 @@ let apply ctxt gas capture_ty capture lam =
       let (gas, ctxt) = local_gas_counter_and_outdated_context ctxt in
       return (lam', ctxt, gas)
 
+(* [fix ctxt gas fix_ty lam] builds the fixpoint of [lam] by fixing its first
+   formal argument to itself. The type of [lam] is represented by [fix_ty]*)
+let fix ctxt gas fix_ty lam =
+  let (Lam (descr, expr)) = lam in
+  let (Item_t (full_arg_ty, _)) = descr.kbef in
+  let ctxt = update_context gas ctxt in
+  unparse_data ctxt Optimized fix_ty lam >>=? fun (const_expr, ctxt) ->
+  let loc = Micheline.dummy_location in
+  unparse_ty ~loc ctxt fix_ty >>?= fun (ty_expr, ctxt) ->
+  match full_arg_ty with
+  | Pair_t ((Lambda_t (_, _, _) as lam_ty), arg_ty, _, _) ->
+      let arg_stack_ty = Item_t (arg_ty, Bot_t) in
+      let kinfo_lam = {iloc = descr.kloc; kstack_ty = Item_t (arg_ty, Bot_t)} in
+      let kinfo_pair =
+        {iloc = descr.kloc; kstack_ty = Item_t (lam_ty, Item_t (arg_ty, Bot_t))}
+      in
+      let rec lam' = Lam ({descr with kbef = arg_stack_ty; kinstr = instr}, expr)
+      and instr =
+        ILambda (kinfo_lam, lam', ICons_pair (kinfo_pair, descr.kinstr))
+      in
+
+      let full_descr =
+        {
+          kloc = descr.kloc;
+          kbef = arg_stack_ty;
+          kaft = descr.kaft;
+          kinstr = instr;
+        }
+      in
+      let full_expr =
+        Micheline.Seq
+          ( loc,
+            [
+              Prim (loc, I_PUSH, [ty_expr; const_expr], []);
+              Prim (loc, I_PAIR, [], []);
+              expr;
+            ] )
+      in
+      let lam' = Lam (full_descr, full_expr) in
+      let (gas, ctxt) = local_gas_counter_and_outdated_context ctxt in
+      return (lam', ctxt, gas)
+
 (* [transfer (ctxt, sc) gas tez parameters_ty parameters destination entrypoint]
    creates an operation that transfers an amount of [tez] to
    a contract determined by [(destination, entrypoint)]

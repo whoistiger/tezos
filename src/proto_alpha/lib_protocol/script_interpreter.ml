@@ -928,6 +928,10 @@ and step : type a s b t r f. (a, s, b, t, r, f) step_type =
           let (lam, stack) = stack in
           apply ctxt gas capture_ty capture lam >>=? fun (lam', ctxt, gas) ->
           (step [@ocaml.tailcall]) (ctxt, sc) gas k ks lam' stack
+      | IFix (_, fixpoint_ty, k) ->
+          let lam = accu in
+          fix ctxt gas fixpoint_ty lam >>=? fun (lam', ctxt, gas) ->
+          (step [@ocaml.tailcall]) (ctxt, sc) gas k ks lam' stack
       | ILambda (_, lam, k) ->
           (step [@ocaml.tailcall]) g gas k ks lam (accu, stack)
       | IFailwith (_, kloc, tv) ->
