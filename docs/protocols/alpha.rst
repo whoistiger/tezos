@@ -39,6 +39,8 @@ Bug Fixes
 Minor Changes
 -------------
 
+- Add a new FIX instruction to build fix-points of LAMBDA values.
+
 Internal
 --------
 
