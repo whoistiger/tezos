@@ -66,7 +66,12 @@ end
 module M = struct
   include Tezos_context_memory.Context
 
-  let make_context () = Lwt.return empty
+  let make_context () =
+    (* there is no simple way to build a context *)
+    Lwt_utils_unix.with_tempdir "tezos_test_" (fun base_dir ->
+        let open Filename.Infix in
+        let root = base_dir // "context" in
+        Lwt.return (Tezos_context_memory.make_empty_context ~root ()))
 end
 
 module Make (A : sig
