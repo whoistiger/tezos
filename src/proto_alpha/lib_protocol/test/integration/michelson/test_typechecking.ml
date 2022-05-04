@@ -730,6 +730,28 @@ let test_forbidden_op_in_view op () =
         op
   | Error _ -> return_unit
 
+let test_fixpoint_instruction () =
+  let contract = "./contracts/fact_fix.tz" in
+  let script = read_file contract in
+  let contract_expr = Expr.from_string script in
+  test_context () >>=? fun ctxt ->
+  Script_ir_translator.typecheck_code
+    ~legacy:false
+    ~show_types:false
+    ctxt
+    contract_expr
+  >>= function
+  | Ok _ -> return_unit
+  | Error t ->
+      Alcotest.failf "Unexpected error: %a" Environment.Error_monad.pp_trace t
+(* >>= function
+ * | Ok _ ->
+ *     Alcotest.failf
+ *       "%s should not be allowed in views, see \
+ *        https://gitlab.com/tezos/tezos/-/issues/1922"
+ *       op
+ * | Error _ -> return_unit *)
+
 let tests =
   [
     Tztest.tztest "test unparse view" `Quick test_unparse_view;
@@ -767,4 +789,5 @@ let tests =
       "test forbidden CREATE_CONTRACT in view"
       `Quick
       (test_forbidden_op_in_view "CREATE_CONTRACT");
+    Tztest.tztest "test fix point instruction" `Quick test_fixpoint_instruction;
   ]
