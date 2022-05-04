@@ -78,6 +78,14 @@ val transfer :
   Rollup.Tx_rollup.l2_transfer ->
   string Lwt.t
 
+val withdraw :
+  ?counter:int64 ->
+  t ->
+  source:string ->
+  secret_key:string ->
+  Rollup.Tx_rollup.l2_withdraw ->
+  string Lwt.t
+
 val get_batcher_queue : t -> string Lwt.t
 
 val get_batcher_transaction : t -> transaction_hash:string -> string Lwt.t

@@ -185,6 +185,29 @@ let transfer ?counter tx_client ~source ~secret_key
   in
   Lwt.return out
 
+let withdraw ?counter tx_client ~source ~secret_key
+    Rollup.Tx_rollup.(`Withdraw {qty; destination; ticket}) =
+  let qty = Int64.to_string qty in
+  let* out =
+    spawn_command
+      tx_client
+      ([
+         "withdraw";
+         qty;
+         "of";
+         ticket;
+         "from";
+         source;
+         "to";
+         destination;
+         "--secret-key";
+         secret_key;
+       ]
+      @ optional_arg ~name:"counter" Int64.to_string counter)
+    |> Process.check_and_read_stdout
+  in
+  Lwt.return out
+
 let get_batcher_queue tx_client =
   let* out =
     spawn_command tx_client ["get"; "batcher"; "queue"]
