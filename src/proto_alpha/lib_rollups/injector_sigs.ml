@@ -88,11 +88,13 @@ module type PARAMETERS = sig
   (** Returns the {e appoximate upper-bounds} for the fee and limits of an
       operation, used to compute an upper bound on the size (in bytes) for this
       operation. *)
-  val approximate_fee_bound : 'a manager_operation -> approximate_fee_bound
+  val approximate_fee_bound :
+    rollup_node_state -> 'a manager_operation -> approximate_fee_bound
 
   (** Returns the fee_parameter (to compute fee w.r.t. gas, size, etc.) and the
       caps of fee and burn for each operation. *)
-  val fee_parameter : 'a manager_operation -> Injection.fee_parameter
+  val fee_parameter :
+    rollup_node_state -> 'a manager_operation -> Injection.fee_parameter
 
   (** When injecting the given [operations] in an L1 batch, if
      [batch_must_succeed operations] returns [`All] then all the operations must

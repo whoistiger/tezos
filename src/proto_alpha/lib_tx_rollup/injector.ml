@@ -79,7 +79,7 @@ module Parameters = struct
     | Rejection -> 3
     | Dispatch_withdrawals -> 89
 
-  let fee_parameter _ =
+  let fee_parameter _ _ =
     Injection.
       {
         minimal_fees = Tez.of_mutez_exn 100L;
@@ -98,7 +98,7 @@ module Parameters = struct
      (without having to do a simulation first). *)
   (* TODO: https://gitlab.com/tezos/tezos/-/issues/2812
      check the size, or compute them wrt operation kind *)
-  let approximate_fee_bound _ =
+  let approximate_fee_bound _ _ =
     {
       fee = Tez.of_mutez_exn 3_000_000L;
       counter = Z.of_int 500_000;
