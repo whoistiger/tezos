@@ -26,14 +26,14 @@
 open Clic
 
 let l1_destination_parameter =
-  Clic.parameter (fun _ s ->
+  parameter (fun _ s ->
       match Signature.Public_key_hash.of_b58check_opt s with
       | Some addr -> return addr
       | None -> failwith "cannot parse %s to get a valid destination" s)
 
 let l2_destination_parameter =
   let open Lwt_result_syntax in
-  Clic.parameter (fun _ s ->
+  parameter (fun _ s ->
       match Tx_rollup_l2_address.of_b58check_opt s with
       | Some pkh -> return pkh
       | None -> failwith "cannot parse %s to get a valid destination" s)
@@ -60,21 +60,21 @@ let json_file_or_text_parameter =
 
 let block_id_param =
   let open Lwt_result_syntax in
-  Clic.parameter (fun _ s ->
+  parameter (fun _ s ->
       match RPC.destruct_block_id s with
       | Ok v -> return v
       | Error e -> failwith "%s" e)
 
 let secret_key_parameter =
   let open Lwt_result_syntax in
-  Clic.parameter (fun _ s ->
+  parameter (fun _ s ->
       match Bls.Secret_key.of_b58check_opt s with
       | Some sk -> return sk
       | None -> failwith "cannot parse %s to get a valid BLS secret key" s)
 
 let signer_parameter =
   let open Lwt_result_syntax in
-  Clic.parameter (fun _ s ->
+  parameter (fun _ s ->
       match Tx_rollup_l2_address.of_b58check_opt s with
       | Some pkh -> return @@ Tx_rollup_l2_batch.L2_addr pkh
       | None -> (
@@ -84,7 +84,7 @@ let signer_parameter =
 
 let ticket_hash_parameter =
   let open Lwt_result_syntax in
-  Clic.parameter (fun _ s ->
+  parameter (fun _ s ->
       match Alpha_context.Ticket_hash.of_b58check_opt s with
       | Some tkh -> return tkh
       | None -> failwith "cannot parse %s to get a valid ticket_hash" s)
@@ -208,17 +208,15 @@ let craft_batch
   batch signatures transactions
 
 let conv_pk =
-  Clic.parameter (fun _ pk_str ->
-      return (Bls.Public_key.of_b58check_exn pk_str))
+  parameter (fun _ pk_str -> return (Bls.Public_key.of_b58check_exn pk_str))
 
 let conv_qty =
-  Clic.parameter (fun _ qty ->
+  parameter (fun _ qty ->
       match Tx_rollup_l2_qty.of_string qty with
       | Some qty -> return qty
       | None -> failwith "The given qty is invalid")
 
-let conv_counter =
-  Clic.parameter (fun _ counter -> return (Int64.of_string counter))
+let conv_counter = parameter (fun _ counter -> return (Int64.of_string counter))
 
 let signer_next_counter cctxt signer_pk counter =
   match counter with
@@ -441,7 +439,7 @@ let get_batcher_queue () =
       return_unit)
 
 let valid_transaction_hash =
-  Clic.parameter (fun _ s ->
+  parameter (fun _ s ->
       match L2_transaction.Hash.of_b58check_opt s with
       | Some addr -> return addr
       | None -> failwith "The L2 transaction hash is invalid")
