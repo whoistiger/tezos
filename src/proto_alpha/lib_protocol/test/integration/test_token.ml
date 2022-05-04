@@ -568,12 +568,11 @@ let check_sink_balances ctxt ctxt' dest amount =
 let rec check_balances ctxt ctxt' src dest amount =
   match (cast_to_container_type src, cast_to_container_type dest) with
   | (None, None) -> return_unit
-  | (Some (`Delegate_balance d), Some (`Contract c as contract))
-    when Contract.Implicit d = c ->
-      (* src and dest are in fact referring to the same contract *)
-      check_balances ctxt ctxt' contract contract amount
-  | (Some (`Contract c as contract), Some (`Delegate_balance d))
-    when Contract.Implicit d = c ->
+  | ( Some (`Delegate_balance d),
+      Some (`Contract (Contract.Implicit c) as contract) )
+  | ( Some (`Contract (Contract.Implicit c) as contract),
+      Some (`Delegate_balance d) )
+    when d = c ->
       (* src and dest are in fact referring to the same contract *)
       check_balances ctxt ctxt' contract contract amount
   | (Some src, Some dest) when src = dest ->
