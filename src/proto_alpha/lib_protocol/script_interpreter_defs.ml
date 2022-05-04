@@ -272,6 +272,7 @@ let cost_of_instr : type a s r f. (a, s, r, f) kinstr -> a -> s -> Gas.cost =
   | IDip _ -> Interp_costs.dip
   | IExec _ -> Interp_costs.exec
   | IApply _ -> Interp_costs.apply
+  | IFix _ -> Interp_costs.apply
   | ILambda _ -> Interp_costs.lambda
   | IFailwith _ -> Gas.free
   | IEq _ -> Interp_costs.eq

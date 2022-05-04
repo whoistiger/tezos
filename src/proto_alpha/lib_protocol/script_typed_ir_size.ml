@@ -440,6 +440,8 @@ and kinstr_size :
     | IExec (kinfo, _) -> ret_succ_adding accu (base kinfo)
     | IApply (kinfo, ty, _) ->
         ret_succ_adding (accu ++ ty_size ty) (base kinfo +! word_size)
+    | IFix (kinfo, ty, _) ->
+        ret_succ_adding (accu ++ ty_size ty) (base kinfo +! word_size)
     | ILambda (kinfo, lambda, _) ->
         let accu = ret_succ_adding accu (base kinfo +! word_size) in
         (lambda_size [@ocaml.tailcall]) ~count_lambda_nodes accu lambda

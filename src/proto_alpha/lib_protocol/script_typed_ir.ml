@@ -845,6 +845,11 @@ and ('before_top, 'before, 'result_top, 'result) kinstr =
       * ('a, _) ty
       * (('b, 'c) lambda, 's, 'r, 'f) kinstr
       -> ('a, ('a * 'b, 'c) lambda * 's, 'r, 'f) kinstr
+  | IFix :
+      ((('a, 'b) lambda * 'a, 'b) lambda, 's) kinfo
+      * ((('a, 'b) lambda * 'a, 'b) lambda, _) ty
+      * (('a, 'b) lambda, 's, 'r, 'f) kinstr
+      -> ((('a, 'b) lambda * 'a, 'b) lambda, 's, 'r, 'f) kinstr
   | ILambda :
       ('a, 's) kinfo
       * ('b, 'c) lambda
@@ -1502,6 +1507,7 @@ let kinfo_of_kinstr : type a s b f. (a, s, b, f) kinstr -> (a, s) kinfo =
   | IDip (kinfo, _, _) -> kinfo
   | IExec (kinfo, _) -> kinfo
   | IApply (kinfo, _, _) -> kinfo
+  | IFix (kinfo, _, _) -> kinfo
   | ILambda (kinfo, _, _) -> kinfo
   | IFailwith (kinfo, _, _) -> kinfo
   | ICompare (kinfo, _, _) -> kinfo
@@ -1704,6 +1710,7 @@ let kinstr_rewritek :
   | IDip (kinfo, body, k) -> IDip (kinfo, f.apply body, f.apply k)
   | IExec (kinfo, k) -> IExec (kinfo, f.apply k)
   | IApply (kinfo, ty, k) -> IApply (kinfo, ty, f.apply k)
+  | IFix (kinfo, ty, k) -> IFix (kinfo, ty, f.apply k)
   | ILambda (kinfo, l, k) -> ILambda (kinfo, l, f.apply k)
   | IFailwith (kinfo, i, ty) -> IFailwith (kinfo, i, ty)
   | ICompare (kinfo, ty, k) -> ICompare (kinfo, ty, f.apply k)
@@ -2108,6 +2115,7 @@ let kinstr_traverse i init f =
     | IDip (_, k1, k2) -> (next2 [@ocaml.tailcall]) k1 k2
     | IExec (_, k) -> (next [@ocaml.tailcall]) k
     | IApply (_, _, k) -> (next [@ocaml.tailcall]) k
+    | IFix (_, _, k) -> (next [@ocaml.tailcall]) k
     | ILambda (_, _, k) -> (next [@ocaml.tailcall]) k
     | IFailwith (_, _, _) -> (return [@ocaml.tailcall]) ()
     | ICompare (_, _, k) -> (next [@ocaml.tailcall]) k

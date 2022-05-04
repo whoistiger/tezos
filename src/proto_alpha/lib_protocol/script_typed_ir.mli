@@ -798,6 +798,11 @@ and ('before_top, 'before, 'result_top, 'result) kinstr =
       * ('a, _) ty
       * (('b, 'c) lambda, 's, 'r, 'f) kinstr
       -> ('a, ('a * 'b, 'c) lambda * 's, 'r, 'f) kinstr
+  | IFix :
+      ((('a, 'b) lambda * 'a, 'b) lambda, 's) kinfo
+      * ((('a, 'b) lambda * 'a, 'b) lambda, _) ty
+      * (('a, 'b) lambda, 's, 'r, 'f) kinstr
+      -> ((('a, 'b) lambda * 'a, 'b) lambda, 's, 'r, 'f) kinstr
   | ILambda :
       ('a, 's) kinfo
       * ('b, 'c) lambda
