@@ -94,7 +94,7 @@ let get_block tx_client ~block =
   Lwt.return out
 
 let craft_tx_transaction tx_client ~signer ?counter
-    Rollup.Tx_rollup.{qty; destination; ticket} =
+    Rollup.Tx_rollup.(`Transfer {qty; destination; ticket}) =
   let qty = Int64.to_string qty in
   let* out =
     spawn_command
@@ -116,10 +116,12 @@ let craft_tx_transaction tx_client ~signer ?counter
   in
   Lwt.return out
 
-let craft_tx_transfers tx_client Rollup.Tx_rollup.{counter; signer; contents} =
+let craft_tx_transfers tx_client ~signer ?counter transfers =
   let contents_json =
     let open Data_encoding in
-    Json.construct (list Rollup.Tx_rollup.transfer_content_encoding) contents
+    Json.construct
+      (list Rollup.Tx_rollup.operation_content_encoding)
+      (transfers :> Rollup.Tx_rollup.operation_content list)
     |> Json.to_string
   in
   let* out =
@@ -161,7 +163,7 @@ let craft_tx_batch tx_client ~batch ~signatures =
   Lwt.return out
 
 let transfer ?counter tx_client ~source ~secret_key
-    Rollup.Tx_rollup.{qty; destination; ticket} =
+    Rollup.Tx_rollup.(`Transfer {qty; destination; ticket}) =
   let qty = Int64.to_string qty in
   let* out =
     spawn_command

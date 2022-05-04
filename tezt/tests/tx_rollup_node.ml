@@ -728,11 +728,7 @@ let craft_tx ?counter tx_client ~qty ~signer ~dest ~ticket =
     ?counter
     ~signer
     tx_client
-    {destination = dest; qty; ticket}
-
-let craft_tx_transfers ?counter ~signer tx_client contents =
-  let transfer : Rollup.transfer = {signer; counter; contents} in
-  Tx_rollup_client.craft_tx_transfers tx_client transfer
+    (`Transfer {destination = dest; qty; ticket})
 
 let craft_batch tx_client ~batch ~signers =
   let signatures = bls_signers_sks_json signers in
@@ -760,7 +756,7 @@ let inject_transfer ?counter tx_client ~source ~secret_key ~qty ~dest ~ticket =
     tx_client
     ~source
     ~secret_key
-    {qty; destination = dest; ticket}
+    (`Transfer {qty; destination = dest; ticket})
 
 let tx_client_get_block ~tx_client ~block =
   Tx_rollup_client.get_block ~block tx_client
@@ -2242,24 +2238,24 @@ let test_batcher_large_message =
       let tx_client = Tx_rollup_client.create tx_node in
       let* bls_key = generate_bls_addr ~alias:"bob" client in
       let pkh1_str = bls_key.aggregate_public_key_hash in
-      let contents : Rollup.transfer_content list =
-        let transfer_content : Rollup.transfer_content =
+      let transfers : Rollup.l2_transfer list =
+        let transfer_content : Rollup.l2_transfer =
           let destination = pkh1_str in
           let ticket =
             Tezos_protocol_alpha.Protocol.Alpha_context.Ticket_hash.(
               to_b58check zero)
           in
           let qty = 1L in
-          {destination; ticket; qty}
+          `Transfer {destination; ticket; qty}
         in
         List.init 200 (fun _ -> transfer_content)
       in
       let* tx =
-        craft_tx_transfers
-          ~counter:1L
+        Tx_rollup_client.craft_tx_transfers
           ~signer:bls_key.aggregate_public_key
+          ~counter:1L
           tx_client
-          contents
+          transfers
       in
       let signature = sign_one_transaction bls_key tx in
       let* _ =
