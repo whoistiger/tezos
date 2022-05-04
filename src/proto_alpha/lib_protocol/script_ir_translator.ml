@@ -3938,6 +3938,21 @@ and[@coq_axiom_with_reason "gadt"] parse_instr :
       fun res_ty ->
       let stack = Item_t (res_ty, rest) in
       (typed ctxt loc instr stack : ((a, s) judgement * context) tzresult Lwt.t)
+  | ( Prim (loc, I_FIX, [], annot),
+      Item_t
+        ( (Lambda_t
+             ( Pair_t ((Lambda_t (arg_ty, ret_ty, _) as _lty), arg_ty', _, _),
+               ret_ty',
+               _ ) as lty),
+          rest ) ) ->
+      check_packable ~legacy:false loc _lty >>?= fun () ->
+      check_item_ty ctxt arg_ty arg_ty' loc I_FIX 1 2 >>?= fun (Eq, ctxt) ->
+      check_item_ty ctxt ret_ty ret_ty' loc I_FIX 1 2 >>?= fun (Eq, ctxt) ->
+      check_var_annot loc annot >>?= fun () ->
+      let instr = {apply = (fun kinfo k -> IFix (kinfo, lty, k))} in
+      lambda_t loc arg_ty ret_ty >>?= fun res_ty ->
+      let stack = Item_t (res_ty, rest) in
+      (typed ctxt loc instr stack : ((a, s) judgement * context) tzresult Lwt.t)
   | (Prim (loc, I_DIP, [code], annot), Item_t (v, rest)) -> (
       error_unexpected_annot loc annot >>?= fun () ->
       check_kind [Seq_kind] code >>?= fun () ->
