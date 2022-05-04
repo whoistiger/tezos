@@ -107,7 +107,19 @@ val wait_for : ?where:string -> t -> string -> (JSON.t -> 'a option) -> 'a Lwt.t
 
 (** Connected to a tezos node.
     Returns the name of the configuration file. *)
-val config_init : t -> string -> string -> string Lwt.t
+val init_config :
+  t ->
+  [`Accuser | `Batcher | `Custom | `Maintenance | `Observer | `Operator] ->
+  string ->
+  string ->
+  string Lwt.t
+
+val spawn_init_config :
+  t ->
+  [`Accuser | `Batcher | `Custom | `Maintenance | `Observer | `Operator] ->
+  string ->
+  string ->
+  Process.t
 
 (** [run node] launches the given transaction rollup node. *)
 val run : t -> unit Lwt.t

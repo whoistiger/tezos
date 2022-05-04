@@ -204,17 +204,28 @@ let test_node_configuration =
         Rollup_node.create
           ~rollup_id:tx_rollup_hash
           ~rollup_genesis:block_hash
-          ~operator
           client
           node
       in
+      let* () =
+        Rollup_node.spawn_init_config
+          tx_rollup_node
+          `Operator
+          tx_rollup_hash
+          block_hash
+        |> Process.check_error ~exit_code:1 ~msg:(rex "Missing signers")
+      in
       let* filename =
-        Rollup_node.config_init tx_rollup_node tx_rollup_hash block_hash
+        Rollup_node.init_config
+          tx_rollup_node
+          `Observer
+          tx_rollup_hash
+          block_hash
       in
       Log.info "Tx_rollup configuration file was successfully created" ;
       let () =
         let open Ezjsonm in
-        let req = ["operator"; "rollup_id"; "rpc_addr"] in
+        let req = ["mode"; "signers"; "rollup_id"; "rpc_addr"] in
         (* TODO: add optional args checks *)
         match from_channel @@ open_in filename with
         | `O fields ->
@@ -248,7 +259,7 @@ let init_and_run_rollup_node ~originator ?operator ?batch_signer
       client
       node
   in
-  let* _ = Rollup_node.config_init tx_node tx_rollup_hash block_hash in
+  let* _ = Rollup_node.init_config tx_node `Custom tx_rollup_hash block_hash in
   let* () = Rollup_node.run tx_node in
   Log.info "Tx_rollup node is now running" ;
   let* () = Rollup_node.wait_for_ready tx_node in
@@ -322,11 +333,10 @@ let test_tx_node_store_inbox =
         Rollup_node.create
           ~rollup_id:rollup
           ~rollup_genesis:block_hash
-          ~operator
           client
           node
       in
-      let* _ = Rollup_node.config_init tx_node rollup block_hash in
+      let* _ = Rollup_node.init_config tx_node `Observer rollup block_hash in
       let* () = Rollup_node.run tx_node in
       let tx_client = Tx_rollup_client.create tx_node in
       (* Submit a batch *)

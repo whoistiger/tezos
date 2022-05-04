@@ -71,17 +71,25 @@ let spawn_command node =
 let add_option flag str_opt command =
   command @ match str_opt with None -> [] | Some o -> [flag; o]
 
-let spawn_config_init node rollup_id rollup_genesis =
+let string_of_mode = function
+  | `Observer -> "observer"
+  | `Accuser -> "accuser"
+  | `Batcher -> "batcher"
+  | `Maintenance -> "maintenance"
+  | `Operator -> "operator"
+  | `Custom -> "custom"
+
+let spawn_init_config node mode rollup_id rollup_genesis =
   spawn_command
     node
     ([
-       "config";
        "init";
-       "on";
+       string_of_mode mode;
+       "config";
+       "for";
+       rollup_id;
        "--data-dir";
        data_dir node;
-       "--rollup-id";
-       rollup_id;
        "--rollup-genesis";
        rollup_genesis;
        "--rpc-addr";
@@ -100,8 +108,8 @@ let spawn_config_init node rollup_id rollup_genesis =
          node.persistent_state.dispatch_withdrawals_signer
     |> add_option "--rejection-signer" node.persistent_state.rejection_signer)
 
-let config_init node rollup_id rollup_genesis =
-  let process = spawn_config_init node rollup_id rollup_genesis in
+let init_config node mode rollup_id rollup_genesis =
+  let process = spawn_init_config node mode rollup_id rollup_genesis in
   let* output = Process.check_and_read_stdout process in
   match output =~* rex "Configuration written in ([^\n]*)" with
   | None -> failwith "Configuration initialization failed"
