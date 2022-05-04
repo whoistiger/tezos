@@ -55,7 +55,10 @@ let setup f ~protocol =
   let nodes_args =
     Node.
       [
-        Synchronisation_threshold 0; History_mode (Full None); No_bootstrap_peers;
+        Synchronisation_threshold 0;
+        Connections 0;
+        History_mode (Full None);
+        No_bootstrap_peers;
       ]
   in
   let* (node, client) =
