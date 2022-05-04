@@ -317,3 +317,11 @@ module Last_published_commitment_level = Make_mutable_value (struct
 
   let value_encoding = Raw_level.encoding
 end)
+
+module Last_cemented_commitment_level = Make_mutable_value (struct
+  let path = ["commitments"; "last_cemented_commitment"; "level"]
+
+  type value = Raw_level.t
+
+  let value_encoding = Raw_level.encoding
+end)

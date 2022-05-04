@@ -107,6 +107,12 @@ module Make (PVM : Pvm.S) = struct
   let on_layer_1_chain_event node_ctxt store chain_event old_heads =
     let open Lwt_result_syntax in
     let open Layer1 in
+    let* () =
+      (* Get information about the last cemented commitment to determine the
+         commitment (if any) to publish next. We do this only once per
+         chain event to avoid spamming the layer1 node. *)
+      Components.Commitment.get_last_cemented_commitment_level node_ctxt store
+    in
     let* non_final_heads =
       match chain_event with
       | SameBranch {new_head; intermediate_heads} ->

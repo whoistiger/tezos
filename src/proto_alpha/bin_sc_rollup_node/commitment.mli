@@ -67,8 +67,20 @@ module type S = sig
   val process_head :
     Node_context.t -> Store.t -> Layer1.head -> unit tzresult Lwt.t
 
+  (** [get_last_cemented_commitment_hash_with_level node_ctxt store] 
+      fetches and stores information about the last cemeneted commitment 
+      in the layer1 chain.
+    *)
+  val get_last_cemented_commitment_level :
+    Node_context.t -> Store.t -> unit tzresult Lwt.t
+
   (** [publish_commitment node_ctxt store] publishes the earliest
-      commitment stored in [store] that has not been published yet.
+      commitment stored in [store] that has not been published yet, 
+      unless its inbox level is below the inbox level of the last 
+      cemented commitment in the layer1 chain. In this case, 
+      the rollup node checks whether it has a commitment available 
+      at the level of the lcc and whose hash is consistent with 
+      that of the lcc, and it publishes that instead.
       It uses [node_ctxt.cctxt] to make the RPC call to the Layer1 node.
   *)
 

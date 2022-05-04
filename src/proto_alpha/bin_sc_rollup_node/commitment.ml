@@ -67,6 +67,8 @@ module Number_of_messages = Mutable_counter.Make ()
 
 module Number_of_ticks = Mutable_counter.Make ()
 
+(* TODO: https://gitlab.com/tezos/tezos/-/issues/2878 
+   Fetch the protocol constant for sc_rollup_commitment_frequency. *)
 let sc_rollup_commitment_frequency = Int32.of_int 20
 
 let last_commitment (module Last_commitment_level : Mutable_level_store) store =
@@ -142,8 +144,20 @@ module type S = sig
   val process_head :
     Node_context.t -> Store.t -> Layer1.head -> unit tzresult Lwt.t
 
+  (** [get_last_cemented_commitment_hash_with_level node_ctxt store] 
+      fetches and stores information about the last cemeneted commitment 
+      in the layer1 chain.
+    *)
+  val get_last_cemented_commitment_level :
+    Node_context.t -> Store.t -> unit tzresult Lwt.t
+
   (** [publish_commitment node_ctxt store] publishes the earliest
-      commitment stored in [store] that has not been published yet.
+      commitment stored in [store] that has not been published yet, 
+      unless its inbox level is below the inbox level of the last 
+      cemented commitment in the layer1 chain. In this case, 
+      the rollup node checks whether it has a commitment available 
+      at the level of the lcc and whose hash is consistent with 
+      that of the lcc, and it publishes that instead.
       It uses [node_ctxt.cctxt] to make the RPC call to the Layer1 node.
   *)
 
@@ -240,16 +254,27 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
     let* () = update_ticks_and_messages store hash in
     store_commitment_if_necessary ~origination_level store current_level hash
 
-  (* TODO: https://gitlab.com/tezos/tezos/-/issues/2869
-     use the Injector to publish commitments. *)
-  let publish_commitment
+  let get_last_cemented_commitment_level
+      ({cctxt; rollup_address; _} : Node_context.t) store =
+    let open Lwt_result_syntax in
+    let* (_hash, inbox_level) =
+      Plugin.RPC.Sc_rollup.last_cemented_commitment_hash_with_level
+        cctxt
+        (cctxt#chain, cctxt#block)
+        rollup_address
+    in
+    let*! () = Store.Last_cemented_commitment_level.set store inbox_level in
+    return_unit
+
+  let get_commitment_and_publish
+      (module Last_commitment_level : Mutable_level_store)
       ({cctxt; rollup_address; initial_level; _} as node_ctxt : Node_context.t)
       store =
     let open Lwt_result_syntax in
     let* next_level_to_publish =
       Lwt.map Environment.wrap_tzresult
       @@ next_commitment_level
-           (module Store.Last_published_commitment_level)
+           (module Last_commitment_level)
            ~origination_level:initial_level
            store
     in
@@ -257,55 +282,66 @@ module Make (PVM : Pvm.S) : S with module PVM = PVM = struct
       Store.Commitments.mem store next_level_to_publish
     in
     if is_commitment_available then
-      (* Retrieve the inbox level of the last_cemented_commitment and check if
-         it is greater or equal than the inbox level of the commitment to be
-         published. *)
-      let* (_, last_non_publishable_level) =
-        Plugin.RPC.Sc_rollup.last_cemented_commitment_hash_with_level
-          cctxt
-          (cctxt#chain, cctxt#block)
-          rollup_address
-      in
       let*! commitment = Store.Commitments.get store next_level_to_publish in
-      if Raw_level.(commitment.inbox_level <= last_non_publishable_level) then
-        return_unit
-      else
-        let* (source, src_pk, src_sk) =
-          Node_context.get_operator_keys node_ctxt
-        in
-        let* (_, _, Manager_operation_result {operation_result; _}) =
-          Client_proto_context.sc_rollup_publish
-            cctxt
-            ~chain:cctxt#chain
-            ~block:cctxt#block
-            ~commitment
-            ~source
-            ~rollup:rollup_address
-            ~src_pk
-            ~src_sk
-            ~fee_parameter:Configuration.default_fee_parameter
-            ()
-        in
-        let open Apply_results in
-        let*! () =
-          match operation_result with
-          | Applied (Sc_rollup_publish_result _) ->
-              let open Lwt_syntax in
-              let* () =
-                Store.Last_published_commitment_level.set
-                  store
-                  commitment.inbox_level
-              in
-              Commitment_event.commitment_published commitment
-          | Failed (Sc_rollup_publish_manager_kind, _errors) ->
-              Commitment_event.commitment_failed commitment
-          | Backtracked (Sc_rollup_publish_result _, _errors) ->
-              Commitment_event.commitment_backtracked commitment
-          | Skipped Sc_rollup_publish_manager_kind ->
-              Commitment_event.commitment_skipped commitment
-        in
-        return_unit
+      let* (source, src_pk, src_sk) =
+        Node_context.get_operator_keys node_ctxt
+      in
+      let* (_, _, Manager_operation_result {operation_result; _}) =
+        Client_proto_context.sc_rollup_publish
+          cctxt
+          ~chain:cctxt#chain
+          ~block:cctxt#block
+          ~commitment
+          ~source
+          ~rollup:rollup_address
+          ~src_pk
+          ~src_sk
+          ~fee_parameter:Configuration.default_fee_parameter
+          ()
+      in
+      let open Apply_results in
+      let*! () =
+        match operation_result with
+        | Applied (Sc_rollup_publish_result _) ->
+            let open Lwt_syntax in
+            let* () =
+              Store.Last_published_commitment_level.set
+                store
+                commitment.inbox_level
+            in
+            Commitment_event.commitment_published commitment
+        | Failed (Sc_rollup_publish_manager_kind, _errors) ->
+            Commitment_event.commitment_failed commitment
+        | Backtracked (Sc_rollup_publish_result _, _errors) ->
+            Commitment_event.commitment_backtracked commitment
+        | Skipped Sc_rollup_publish_manager_kind ->
+            Commitment_event.commitment_skipped commitment
+      in
+      return_unit
     else return_unit
+
+  (* TODO: https://gitlab.com/tezos/tezos/-/issues/2869
+     use the Injector to publish commitments. *)
+  let publish_commitment node_ctxt store =
+    let open Lwt_result_syntax in
+    let open Node_context in
+    let origination_level = node_ctxt.initial_level in
+    (* Retrieve the inbox level of the last_cemented_commitment and check if
+       it is greater or equal than the inbox level of the commitment to be
+       published. *)
+    let*! lcc_level = Store.Last_cemented_commitment_level.get store in
+    let*! last_published_level =
+      last_commitment_level
+        (module Store.Last_published_commitment_level)
+        ~origination_level
+        store
+    in
+    let lsc =
+      if Raw_level.(last_published_level < lcc_level) then
+        (module Store.Last_cemented_commitment_level : Mutable_level_store)
+      else (module Store.Last_published_commitment_level)
+    in
+    get_commitment_and_publish lsc node_ctxt store
 
   let start () = Commitment_event.starting ()
 end

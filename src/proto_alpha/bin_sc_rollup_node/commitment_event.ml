@@ -130,6 +130,23 @@ module Simple = struct
       ("number_of_messages", Sc_rollup.Number_of_messages.encoding)
       ("number_of_ticks", Sc_rollup.Number_of_ticks.encoding)
 
+  let commitment_before_lcc =
+    declare_5
+      ~section
+      ~name:"sc_rollup_node_commitment_before_lcc"
+      ~msg:
+        "Commitment inbox level is before last cemented commitment inbox \
+         level: this commitment will not be published - predecessor: \
+         {predecessor}, inbox_level: {inbox_level}, compressed_state: \
+         {compressed_state}, number_of_messages: {number_of_messages}, \
+         number_of_ticks: {number_of_ticks}"
+      ~level:Notice
+      ("predecessor", Sc_rollup.Commitment_hash.encoding)
+      ("inbox_level", Raw_level.encoding)
+      ("compressed_state", Sc_rollup.State_hash.encoding)
+      ("number_of_messages", Sc_rollup.Number_of_messages.encoding)
+      ("number_of_ticks", Sc_rollup.Number_of_ticks.encoding)
+
   let compute_commitment =
     declare_2
       ~section
@@ -226,6 +243,23 @@ let commitment_failed
   Simple.(
     emit
       commitment_failed
+      ( predecessor,
+        inbox_level,
+        compressed_state,
+        number_of_messages,
+        number_of_ticks ))
+
+let commitment_before_lcc
+    {
+      predecessor;
+      inbox_level;
+      compressed_state;
+      number_of_messages;
+      number_of_ticks;
+    } =
+  Simple.(
+    emit
+      commitment_before_lcc
       ( predecessor,
         inbox_level,
         compressed_state,
