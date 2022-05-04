@@ -784,8 +784,7 @@ let may_patch_limits (type kind) (cctxt : #Protocol_client_context.full)
              else
                let safety_guard =
                  match c.operation with
-                 | Transaction {destination = Contract (Implicit _); _} ->
-                     Gas.Arith.zero
+                 | Transaction {destination = Contract (Implicit _); _}
                  | Reveal _ | Delegation _ | Set_deposits_limit _ ->
                      Gas.Arith.zero
                  | _ -> safety_guard
