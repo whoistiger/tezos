@@ -548,6 +548,65 @@ let transfer () =
       in
       return_unit)
 
+let withdraw () =
+  let open Lwt_result_syntax in
+  command
+    ~desc:"submit a layer-2 withdraw to a rollup node’s batcher"
+    (args2
+       (arg
+          ~long:"secret-key"
+          ~placeholder:"sk"
+          ~doc:"A BLS secret key"
+          secret_key_parameter)
+       (arg
+          ~long:"counter"
+          ~short:'c'
+          ~placeholder:"counter"
+          ~doc:"The counter associated to the signer address"
+          conv_counter))
+    (prefix "withdraw"
+    @@ param ~name:"qty" ~desc:"qty to transfer" conv_qty
+    @@ prefix "of"
+    @@ param ~name:"ticket" ~desc:"A ticket hash" ticket_hash_parameter
+    @@ prefix "from"
+    @@ param
+         ~name:"source"
+         ~desc:"A BLS public key or a BLS public key hash"
+         signer_parameter
+    @@ prefix "to"
+    @@ param
+         ~name:"destination"
+         ~desc:"A L1 public key hash"
+         l1_destination_parameter
+    @@ stop)
+    (fun (sk, counter) qty ticket_hash signer destination cctxt ->
+      let open Tx_rollup_l2_batch.V1 in
+      let* sk =
+        match sk with
+        | Some sk -> return sk
+        | None -> failwith "Missing secret key argument"
+      in
+      let* counter = signer_next_counter cctxt signer counter in
+      (* TODO/TORU: https://gitlab.com/tezos/tezos/-/issues/2903
+         Use an RPC to know whether or not it can be safely replaced by
+         an index. *)
+      let signer = Indexable.from_value signer in
+      let contents = [Withdraw {destination; ticket_hash; qty}] in
+      let operation = Tx_rollup_l2_batch.V1.{counter; signer; contents} in
+      let transaction = [operation] in
+      let* signature =
+        match
+          Bls.aggregate_signature_opt @@ sign_transaction [sk] transaction
+        with
+        | Some signature -> return signature
+        | None -> failwith "Could not aggregate signatures together"
+      in
+      let* hash = RPC.inject_transaction cctxt {transaction; signature} in
+      let*! () =
+        cctxt#message "Transaction hash: %a" L2_transaction.Hash.pp hash
+      in
+      return_unit)
+
 let all () =
   [
     get_tx_address_balance_command ();
@@ -561,4 +620,5 @@ let all () =
     get_batcher_transaction ();
     inject_batcher_transaction ();
     transfer ();
+    withdraw ();
   ]
