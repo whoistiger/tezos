@@ -118,14 +118,16 @@ let test_scenario {output_file_prefix; variant; tags; description} scenario =
         node
         client)
 
-let inbox_level (commitment : Sc_rollup_client.commitment) =
+let inbox_level (_, (commitment : Sc_rollup_client.commitment)) =
   commitment.inbox_level
 
-let number_of_messages (commitment : Sc_rollup_client.commitment) =
+let number_of_messages (_, (commitment : Sc_rollup_client.commitment)) =
   commitment.number_of_messages
 
-let number_of_ticks (commitment : Sc_rollup_client.commitment) =
+let number_of_ticks (_, (commitment : Sc_rollup_client.commitment)) =
   commitment.number_of_ticks
+
+let hash (hash, (_ : Sc_rollup_client.commitment)) = hash
 
 (*
 
@@ -878,6 +880,44 @@ let check_eq_commitment (c1 : Sc_rollup_client.commitment)
     Check.int
     ~error_msg:"Commitments differ in inbox_level (%L = %R)"
 
+let tezos_client_get_commitment client sc_rollup_address commitment_hash =
+  let* output =
+    Client.rpc
+      Client.GET
+      [
+        "chains";
+        "main";
+        "blocks";
+        "head";
+        "context";
+        "sc_rollup";
+        sc_rollup_address;
+        "commitment";
+        commitment_hash;
+      ]
+      client
+  in
+  Lwt.return @@ Sc_rollup_client.commitment_from_json output
+
+let check_published_commitment_in_l1 ?(force_new_level = true) sc_rollup_address
+    client published_commitment =
+  let* () =
+    if force_new_level then
+      (* Triggers injection into the L1 context *)
+      bake_levels 1 client
+    else Lwt.return_unit
+  in
+  let* commitment_in_l1 =
+    match published_commitment with
+    | None -> Lwt.return_none
+    | Some (hash, _) ->
+        tezos_client_get_commitment client sc_rollup_address hash
+  in
+  Option.iter (fun (c1, c2) -> check_eq_commitment c1 c2)
+  @@ Option.bind published_commitment (fun (_, c1) ->
+         Option.map (fun c2 -> (c1, c2)) commitment_in_l1) ;
+  Lwt.return_unit
+
 let test_commitment_scenario variant =
   test_scenario
     {
@@ -953,9 +993,9 @@ let commitment_stored _protocol sc_rollup_node sc_rollup_address _node client =
     Sc_rollup_client.last_published_commitment ~hooks sc_rollup_client
   in
   Option.iter (fun (c1, c2) -> check_eq_commitment c1 c2)
-  @@ Option.bind published_commitment (fun c1 ->
-         Option.map (fun c2 -> (c1, c2)) stored_commitment) ;
-  Lwt.return_unit
+  @@ Option.bind published_commitment (fun (_, c1) ->
+         Option.map (fun (_, c2) -> (c1, c2)) stored_commitment) ;
+  check_published_commitment_in_l1 sc_rollup_address client published_commitment
 
 let commitment_not_stored_if_non_final _protocol sc_rollup_node
     sc_rollup_address _node client =
@@ -1076,9 +1116,9 @@ let commitments_messages_reset _protocol sc_rollup_node sc_rollup_address _node
     Sc_rollup_client.last_published_commitment ~hooks sc_rollup_client
   in
   Option.iter (fun (c1, c2) -> check_eq_commitment c1 c2)
-  @@ Option.bind published_commitment (fun c1 ->
-         Option.map (fun c2 -> (c1, c2)) stored_commitment) ;
-  Lwt.return_unit
+  @@ Option.bind published_commitment (fun (_, c1) ->
+         Option.map (fun (_, c2) -> (c1, c2)) stored_commitment) ;
+  check_published_commitment_in_l1 sc_rollup_address client published_commitment
 
 let commitments_reorgs protocol sc_rollup_node sc_rollup_address node client =
   (* No messages are published after origination, for 19 levels.
@@ -1195,9 +1235,9 @@ let commitments_reorgs protocol sc_rollup_node sc_rollup_address node client =
     Sc_rollup_client.last_published_commitment ~hooks sc_rollup_client
   in
   Option.iter (fun (c1, c2) -> check_eq_commitment c1 c2)
-  @@ Option.bind published_commitment (fun c1 ->
-         Option.map (fun c2 -> (c1, c2)) stored_commitment) ;
-  Lwt.return_unit
+  @@ Option.bind published_commitment (fun (_, c1) ->
+         Option.map (fun (_, c2) -> (c1, c2)) stored_commitment) ;
+  check_published_commitment_in_l1 sc_rollup_address client published_commitment
 
 (* Check that the SC rollup is correctly originated with a boot sector.
    -------------------------------------------------------
