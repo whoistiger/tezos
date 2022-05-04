@@ -92,6 +92,7 @@ type prim =
   | I_EQ
   | I_EXEC
   | I_APPLY
+  | I_FIX
   | I_FAILWITH
   | I_GE
   | I_GET

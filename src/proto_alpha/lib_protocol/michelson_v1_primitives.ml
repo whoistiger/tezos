@@ -79,6 +79,7 @@ type prim =
   | I_EQ
   | I_EXEC
   | I_APPLY
+  | I_FIX
   | I_FAILWITH
   | I_GE
   | I_GET
@@ -201,7 +202,7 @@ let namespace = function
   | D_Elt | D_False | D_Left | D_None | D_Pair | D_Right | D_Some | D_True
   | D_Unit ->
       Constant_namespace
-  | I_ABS | I_ADD | I_ADDRESS | I_AMOUNT | I_AND | I_APPLY | I_BALANCE
+  | I_ABS | I_ADD | I_ADDRESS | I_AMOUNT | I_AND | I_APPLY | I_FIX | I_BALANCE
   | I_BLAKE2B | I_CAR | I_CAST | I_CDR | I_CHAIN_ID | I_CHECK_SIGNATURE
   | I_COMPARE | I_CONCAT | I_CONS | I_CONTRACT | I_CREATE_ACCOUNT
   | I_CREATE_CONTRACT | I_DIG | I_DIP | I_DROP | I_DUG | I_DUP | I_VIEW | I_EDIV
@@ -285,6 +286,7 @@ let string_of_prim = function
   | I_EQ -> "EQ"
   | I_EXEC -> "EXEC"
   | I_APPLY -> "APPLY"
+  | I_FIX -> "FIX"
   | I_FAILWITH -> "FAILWITH"
   | I_GE -> "GE"
   | I_GET -> "GET"
@@ -439,6 +441,7 @@ let prim_of_string = function
   | "EQ" -> ok I_EQ
   | "EXEC" -> ok I_EXEC
   | "APPLY" -> ok I_APPLY
+  | "FIX" -> ok I_FIX
   | "FAILWITH" -> ok I_FAILWITH
   | "GE" -> ok I_GE
   | "GET" -> ok I_GET
@@ -716,6 +719,7 @@ let prim_encoding =
          ("DUG", I_DUG);
          ("EMPTY_BIG_MAP", I_EMPTY_BIG_MAP);
          ("APPLY", I_APPLY);
+         ("FIX", I_FIX);
          ("chain_id", T_chain_id);
          ("CHAIN_ID", I_CHAIN_ID);
          (* /!\ NEW INSTRUCTIONS MUST BE ADDED AT THE END OF THE STRING_ENUM, FOR BACKWARD COMPATIBILITY OF THE ENCODING. *)
