@@ -90,6 +90,7 @@ let ticket_hash_parameter =
       | None -> failwith "cannot parse %s to get a valid ticket_hash" s)
 
 let get_tx_address_balance_command () =
+  let open Lwt_result_syntax in
   command
     ~desc:"returns the balance associated to a given tz4 address and ticket"
     (args1
@@ -111,10 +112,12 @@ let get_tx_address_balance_command () =
          ticket_hash_parameter
     @@ stop)
     (fun block tz4 ticket (cctxt : #Configuration.tx_client_context) ->
-      RPC.balance cctxt block ticket tz4 >>=? fun value ->
-      cctxt#message "@[%a@]" Tx_rollup_l2_qty.pp value >>= fun () -> return_unit)
+      let* value = RPC.balance cctxt block ticket tz4 in
+      let*! () = cctxt#message "@[%a@]" Tx_rollup_l2_qty.pp value in
+      return_unit)
 
 let get_tx_inbox () =
+  let open Lwt_result_syntax in
   command
     ~desc:"returns the inbox for a given block identifier"
     no_options
@@ -125,12 +128,13 @@ let get_tx_inbox () =
          block_id_param
     @@ stop)
     (fun () block (cctxt : #Configuration.tx_client_context) ->
-      RPC.inbox cctxt block >>=? fun inbox ->
+      let* inbox = RPC.inbox cctxt block in
       let json = Data_encoding.(Json.construct (option Inbox.encoding)) inbox in
-      cctxt#message "@[%s@]" (Data_encoding.Json.to_string json) >>= fun () ->
+      let*! () = cctxt#message "@[%s@]" (Data_encoding.Json.to_string json) in
       return_unit)
 
 let get_tx_block () =
+  let open Lwt_result_syntax in
   command
     ~desc:"returns the tx rollup block for a given block identifier"
     no_options
@@ -138,11 +142,11 @@ let get_tx_block () =
     @@ param ~name:"block" ~desc:"block requested" block_id_param
     @@ stop)
     (fun () block (cctxt : #Configuration.tx_client_context) ->
-      RPC.block cctxt block >>=? fun block ->
+      let* block = RPC.block cctxt block in
       let json =
         Data_encoding.(Json.construct (option RPC.Encodings.block)) block
       in
-      cctxt#message "@[%s@]" (Data_encoding.Json.to_string json) >>= fun () ->
+      let*! () = cctxt#message "@[%s@]" (Data_encoding.Json.to_string json) in
       return_unit)
 
 let sign_transaction sks txs =
@@ -296,6 +300,7 @@ let craft_tx_transfers () =
           return_unit)
 
 let craft_tx_transaction () =
+  let open Lwt_result_syntax in
   command
     ~desc:"WIP: craft a transaction"
     (args1
@@ -330,10 +335,11 @@ let craft_tx_transaction () =
           (Data_encoding.list Tx_rollup_l2_batch.V1.transaction_encoding)
           [[op]]
       in
-      cctxt#message "@[%a@]" Data_encoding.Json.pp json >>= fun () ->
+      let*! () = cctxt#message "@[%a@]" Data_encoding.Json.pp json in
       return_unit)
 
 let craft_tx_withdrawal () =
+  let open Lwt_result_syntax in
   command
     ~desc:"WIP: craft a withdrawal from L2 to L1"
     (args1
@@ -380,7 +386,7 @@ let craft_tx_withdrawal () =
           (Data_encoding.list Tx_rollup_l2_batch.V1.transaction_encoding)
           [[op]]
       in
-      cctxt#message "@[%a@]" Data_encoding.Json.pp json >>= fun () ->
+      let*! () = cctxt#message "@[%a@]" Data_encoding.Json.pp json in
       return_unit)
 
 let batch_of_json ~txs:tx_json ~sks:sks_json =
@@ -394,6 +400,7 @@ let batch_of_json ~txs:tx_json ~sks:sks_json =
   craft_batch transactions sks
 
 let craft_tx_batch () =
+  let open Lwt_result_syntax in
   command
     ~desc:"craft a transactional rollup batch"
     no_options
@@ -405,7 +412,6 @@ let craft_tx_batch () =
          ~desc:"[UNSAFE] JSON list of secret keys to sign"
     @@ stop)
     (fun () json_str sks_str (cctxt : #Configuration.tx_client_context) ->
-      let open Lwt_result_syntax in
       let* txs =
         match Data_encoding.Json.from_string json_str with
         | Ok json -> return json
@@ -422,20 +428,21 @@ let craft_tx_batch () =
           Tx_rollup_l2_batch.encoding
           (Tx_rollup_l2_batch.V1 batch)
       in
-      cctxt#message "@[%a@]" Data_encoding.Json.pp json >>= fun () ->
+      let*! () = cctxt#message "@[%a@]" Data_encoding.Json.pp json in
       return_unit)
 
 let get_batcher_queue () =
+  let open Lwt_result_syntax in
   command
     ~desc:"returns the batcher's queue of pending operations"
     no_options
     (prefixes ["get"; "batcher"; "queue"] @@ stop)
     (fun () (cctxt : #Configuration.tx_client_context) ->
-      RPC.get_queue cctxt >>=? fun queue ->
+      let* queue = RPC.get_queue cctxt in
       let json =
         Data_encoding.(Json.construct (list L2_transaction.encoding) queue)
       in
-      cctxt#message "@[%s@]" (Data_encoding.Json.to_string json) >>= fun () ->
+      let*! () = cctxt#message "@[%s@]" (Data_encoding.Json.to_string json) in
       return_unit)
 
 let valid_transaction_hash =
@@ -445,6 +452,7 @@ let valid_transaction_hash =
       | None -> failwith "The L2 transaction hash is invalid")
 
 let get_batcher_transaction () =
+  let open Lwt_result_syntax in
   command
     ~desc:"returns a batcher transaction for a given hash"
     no_options
@@ -455,11 +463,11 @@ let get_batcher_transaction () =
          valid_transaction_hash
     @@ stop)
     (fun () hash (cctxt : #Configuration.tx_client_context) ->
-      RPC.get_transaction cctxt hash >>=? fun tx ->
+      let* tx = RPC.get_transaction cctxt hash in
       let json =
         Data_encoding.(Json.construct (option L2_transaction.encoding)) tx
       in
-      cctxt#message "@[%s@]" (Data_encoding.Json.to_string json) >>= fun () ->
+      let*! () = cctxt#message "@[%s@]" (Data_encoding.Json.to_string json) in
       return_unit)
 
 let inject_batcher_transaction () =
@@ -481,11 +489,11 @@ let inject_batcher_transaction () =
       let signed_tx =
         Data_encoding.Json.destruct L2_transaction.encoding json
       in
-      RPC.inject_transaction cctxt signed_tx >>=? fun txh ->
+      let* txh = RPC.inject_transaction cctxt signed_tx in
       let json =
         Data_encoding.(Json.construct L2_transaction.Hash.encoding txh)
       in
-      cctxt#message "@[%s@]" (Data_encoding.Json.to_string json) >>= fun () ->
+      let*! () = cctxt#message "@[%s@]" (Data_encoding.Json.to_string json) in
       return_unit)
 
 let transfer () =

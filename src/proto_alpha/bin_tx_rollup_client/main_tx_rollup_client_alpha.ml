@@ -28,7 +28,8 @@ let executable_name = Filename.basename Sys.executable_name
 let argv () = Array.to_list Sys.argv |> List.tl |> Stdlib.Option.get
 
 let main () =
-  Configuration.parse (argv ()) >>=? fun (configuration, argv) ->
+  let open Lwt_result_syntax in
+  let* (configuration, argv) = Configuration.parse (argv ()) in
   let cctxt = Configuration.make_unix_client_context configuration in
   Clic.dispatch (Commands.all ()) cctxt argv
 
