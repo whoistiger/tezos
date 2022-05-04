@@ -227,10 +227,10 @@ let build_lambda_for_transfer_to_originated ~destination ~entrypoint ~amount
       parameter
 
 let build_transaction_operation (cctxt : #full) ~chain ~block ~contract
-    ~destination ?(entrypoint = Entrypoint.default) ?arg ~amount ?fee ?gas_limit
-    ?storage_limit () =
+    ~(destination : Contract.t) ?(entrypoint = Entrypoint.default) ?arg ~amount
+    ?fee ?gas_limit ?storage_limit () =
   (match destination with
-  | Contract.Implicit destination when Entrypoint.is_default entrypoint ->
+  | Implicit destination when Entrypoint.is_default entrypoint ->
       return @@ build_lambda_for_transfer_to_implicit ~destination ~amount
   | Implicit _ ->
       cctxt#error

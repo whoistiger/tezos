@@ -174,10 +174,10 @@ let cast_transaction_parameter (type a ac b bc) ctxt location
   >>?= fun (res, ctxt) ->
   res >>?= fun Script_ir_translator.Eq -> return ((parameters : a), ctxt)
 
-let tickets_of_transaction ctxt ~destination ~entrypoint ~location
-    ~parameters_ty ~parameters =
+let tickets_of_transaction ctxt ~(destination : Contract.t) ~entrypoint
+    ~location ~parameters_ty ~parameters =
   match destination with
-  | Contract.Implicit _ -> return (None, ctxt)
+  | Implicit _ -> return (None, ctxt)
   | Originated _ ->
       (* TODO: #2653
          Avoid having to load the script from the cache.

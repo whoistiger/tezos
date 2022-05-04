@@ -939,10 +939,10 @@ let apply_transaction_to_smart_contract ~ctxt ~source ~contract ~amount
       in
       (ctxt, result, operations) )
 
-let apply_transaction ~ctxt ~parameter ~source ~contract ~amount ~entrypoint
-    ~before_operation ~payer ~chain_id ~mode ~internal =
+let apply_transaction ~ctxt ~parameter ~source ~(contract : Contract.t) ~amount
+    ~entrypoint ~before_operation ~payer ~chain_id ~mode ~internal =
   (match contract with
-  | Contract.Originated _ ->
+  | Originated _ ->
       (if Tez.(amount = zero) then
        (* Detect potential call to non existent contract. *)
        Contract.must_exist ctxt contract

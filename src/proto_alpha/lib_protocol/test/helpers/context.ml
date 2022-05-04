@@ -277,20 +277,19 @@ module Contract = struct
   let balance_and_frozen_bonds ctxt contract =
     Alpha_services.Contract.balance_and_frozen_bonds rpc_ctxt ctxt contract
 
-  let counter ctxt contract =
+  let counter ctxt (contract : Contract.t) =
     match contract with
-    | Contract.Originated _ -> invalid_arg "Helpers.Context.counter"
+    | Originated _ -> invalid_arg "Helpers.Context.counter"
     | Implicit mgr -> Alpha_services.Contract.counter rpc_ctxt ctxt mgr
 
-  let manager _ contract =
+  let manager _ (contract : Contract.t) =
     match contract with
-    | Contract.Originated _ -> invalid_arg "Helpers.Context.manager"
+    | Originated _ -> invalid_arg "Helpers.Context.manager"
     | Implicit pkh -> Account.find pkh
 
-  let is_manager_key_revealed ctxt contract =
+  let is_manager_key_revealed ctxt (contract : Contract.t) =
     match contract with
-    | Contract.Originated _ ->
-        invalid_arg "Helpers.Context.is_manager_key_revealed"
+    | Originated _ -> invalid_arg "Helpers.Context.is_manager_key_revealed"
     | Implicit mgr ->
         Alpha_services.Contract.manager_key rpc_ctxt ctxt mgr >|=? fun res ->
         res <> None

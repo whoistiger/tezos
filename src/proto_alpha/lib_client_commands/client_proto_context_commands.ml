@@ -666,7 +666,8 @@ let force_switch =
        switch requires --gas-limit, --storage-limit, and --fee."
     ()
 
-let transfer_command amount source destination (cctxt : #Client_context.printer)
+let transfer_command amount (source : Contract.t) destination
+    (cctxt : #Client_context.printer)
     ( fee,
       dry_run,
       verbose_signing,
@@ -713,7 +714,7 @@ let transfer_command amount source destination (cctxt : #Client_context.printer)
   else Lwt.return_unit)
   >>= fun () ->
   (match source with
-  | Contract.Originated _ ->
+  | Originated _ ->
       let contract = source in
       Managed_contract.get_contract_manager cctxt source >>=? fun source ->
       Client_keys.get_key cctxt source >>=? fun (_, src_pk, src_sk) ->
@@ -776,7 +777,7 @@ let transfer_command amount source destination (cctxt : #Client_context.printer)
   | Some (_res, _contracts) -> return_unit
 
 let prepare_batch_operation cctxt ?arg ?fee ?gas_limit ?storage_limit
-    ?entrypoint source index batch =
+    ?entrypoint (source : Contract.t) index batch =
   Client_proto_contracts.ContractAlias.find_destination cctxt batch.destination
   >>=? fun (_, destination) ->
   tez_of_string_exn index "amount" batch.amount >>=? fun amount ->
@@ -788,7 +789,7 @@ let prepare_batch_operation cctxt ?arg ?fee ?gas_limit ?storage_limit
   let entrypoint = Option.either batch.entrypoint entrypoint in
   parse_arg_transfer arg >>=? fun parameters ->
   (match source with
-  | Contract.Originated _ ->
+  | Originated _ ->
       Managed_contract.build_transaction_operation
         cctxt
         ~chain:cctxt#chain
@@ -1590,11 +1591,10 @@ let commands_rw () =
              force_low_fee,
              fee_cap,
              burn_cap )
-           (_, source)
+           (_, (source : Contract.t))
            cctxt ->
         match source with
-        | Contract.Originated _ ->
-            failwith "only implicit accounts can be revealed"
+        | Originated _ -> failwith "only implicit accounts can be revealed"
         | Implicit source ->
             Client_keys.get_key cctxt source >>=? fun (_, src_pk, src_sk) ->
             let fee_parameter =

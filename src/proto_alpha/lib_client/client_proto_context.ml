@@ -257,8 +257,8 @@ let list_contract_labels cctxt ~chain ~block =
   Alpha_services.Contract.list cctxt (chain, block) >>=? fun contracts ->
   List.rev_map_es
     (fun h ->
-      (match h with
-      | Contract.Implicit m -> (
+      (match (h : Contract.t) with
+      | Implicit m -> (
           Public_key_hash.rev_find cctxt m >>=? function
           | None -> return ""
           | Some nm -> (

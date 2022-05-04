@@ -140,10 +140,10 @@ let prepare_command_display prepared_command bytes_only =
              Signature.Public_key.pp))
       prepared_command.Client_proto_multisig.keys
 
-let get_parameter_type (cctxt : #Protocol_client_context.full) ~destination
-    ~entrypoint =
+let get_parameter_type (cctxt : #Protocol_client_context.full)
+    ~(destination : Contract.t) ~entrypoint =
   match destination with
-  | Contract.Implicit _ ->
+  | Implicit _ ->
       let open Micheline in
       return @@ strip_locations @@ Prim (0, Script.T_unit, [], [])
   | Originated _ -> (
